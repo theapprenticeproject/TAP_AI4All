@@ -1,0 +1,13 @@
+frappe
+openai
+langchain
+langchain-community
+langchain-openai
+faiss-cpu
+neo4j
+streamlit
+langchain-redis
+langchain-neo4j
+redis==4.5.5
+pypdf==3.17.4
+msgpack

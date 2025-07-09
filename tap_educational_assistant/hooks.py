@@ -242,3 +242,106 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+
+# File: ~/frappe-bench/apps/tap_educational_assistant/tap_educational_assistant/hooks.py
+
+# Add these hooks to your existing hooks.py file
+
+import frappe
+from typing import Dict, Any
+
+# ==============================================
+# CACHE INVALIDATION HOOKS
+# ==============================================
+
+# Document event hooks for cache invalidation
+doc_events = {
+    # Student DocType hooks
+    "Student": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # School DocType hooks
+    "School": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Course DocType hooks
+    "Course": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Activities DocType hooks
+    "Activities": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Performance DocType hooks (most critical for cache invalidation)
+    "Performance": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Enrollment DocType hooks
+    "Enrollment": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Batch DocType hooks
+    "Batch": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    },
+    
+    # Teacher DocType hooks
+    "Teacher": {
+        "after_insert": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_update": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change",
+        "on_trash": "tap_educational_assistant.ai_service.core.redis_cache_manager.invalidate_cache_on_doctype_change"
+    }
+}
+
+# ==============================================
+# SCHEDULED JOBS FOR CACHE MANAGEMENT
+# ==============================================
+
+# Scheduler events for cache maintenance
+scheduler_events = {
+    # Cache warming - run every hour during active hours
+    "hourly": [
+        "tap_educational_assistant.ai_service.cache.scheduled_cache_warming"
+    ],
+    
+    # Cache cleanup - run daily at night
+    "daily": [
+        "tap_educational_assistant.ai_service.cache.daily_cache_cleanup"
+    ],
+    
+    # Cache statistics - run weekly
+    "weekly": [
+        "tap_educational_assistant.ai_service.cache.weekly_cache_report"
+    ]
+}
+
+# ==============================================
+# BOOT SESSION HOOKS
+# ==============================================
+
+# Boot session hook to initialize cache on startup
+boot_session = [
+    "tap_educational_assistant.ai_service.cache.initialize_cache_on_boot"
+]
+

@@ -5,3 +5,32 @@
 tags
 node_modules
 __pycache__
+
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# Frappe
+*.pyc
+sites/
+logs/
+config/
+
+# API Keys
+.env
+config.json
+site_config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store

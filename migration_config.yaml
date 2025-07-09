@@ -1,0 +1,266 @@
+# Educational DocTypes Migration Configuration - CORRECTED
+# Based on actual DocType field analysis
+
+# DocType Configuration - Only Educational DocTypes
+doctypes:
+  include: 
+    - "Student"
+    - "School" 
+    - "Course"
+    - "Activities"
+    - "Performance"
+    - "Enrollment"
+    - "Batch"
+    - "Teacher"
+  exclude: []
+  custom_only: false
+
+# Field name mappings for educational context
+field_mappings:
+  name1: "display_name"
+  teachname: "teacher_name"
+
+# Data types - focused on educational data
+data_types:
+  Link:
+    type: "string"
+    default: null
+  Data:
+    type: "string" 
+    default: null
+  Text:
+    type: "string"
+    default: null
+  Int:
+    type: "integer"
+    default: 0
+  Float:
+    type: "float"
+    default: 0.0
+  Percent:
+    type: "float"
+    default: 0.0
+  Check:
+    type: "boolean"
+    default: false
+  Date:
+    type: "date"
+    default: null
+  Select:
+    type: "string"
+    default: null
+  Table:
+    type: "json"
+    default: []
+
+# Educational Relationships Configuration - COMPLETE AND CORRECTED
+relationships:
+  auto_detect: true
+  
+  # Define ALL educational relationships that actually exist in DocTypes
+  custom_relationships:
+    Student:
+      school_id:
+        target: "School"
+        relationship: "STUDIES_AT"
+        direction: "outgoing"
+    
+    Performance:
+      student:
+        target: "Student"
+        relationship: "TRACKS_STUDENT"
+        direction: "outgoing"
+      activity:
+        target: "Activities"
+        relationship: "MEASURES_ACTIVITY"
+        direction: "outgoing"
+      enrollment:
+        target: "Enrollment"
+        relationship: "RELATED_TO_ENROLLMENT"
+        direction: "outgoing"
+    
+    # ADDED: Missing Enrollment relationships - CRITICAL for graph connectivity
+    Enrollment:
+      batch:
+        target: "Batch"
+        relationship: "BELONGS_TO_BATCH"
+        direction: "outgoing"
+      course:
+        target: "Course"
+        relationship: "ENROLLED_IN_COURSE"
+        direction: "outgoing"
+    
+    # Teacher commented out since it only has teachname field
+    # Teacher:
+    #   school_id:
+    #     target: "School"
+    #     relationship: "TEACHES_AT"
+    #     direction: "outgoing"
+
+# Migration Settings - Optimized for educational data
+migration_settings:
+  batch_size: 500
+  create_constraints: true
+  create_indexes: true
+  validate_data: true
+  backup_before_migration: false
+  retry_failed_records: true
+  max_retries: 3
+  skip_invalid_records: true
+  enable_logging: true
+  log_level: "INFO"
+
+# Educational Data Quality Rules - CORRECTED based on actual fields
+data_quality:
+  required_fields:
+    Student: ["name", "display_name", "school_id"]  # school_id is critical link
+    School: ["name", "display_name", "city"]
+    Teacher: ["name", "teacher_name"]  # Only available fields
+    Activities: ["name", "display_name"]
+    Course: ["name", "display_name"]
+    Performance: ["student", "activity", "enrollment"]  # ALL link fields critical
+    Enrollment: ["batch", "course"]  # BOTH link fields critical
+    Batch: ["name", "display_name"]
+  
+  validation_rules:
+    Student:
+      phone:
+        pattern: "^[0-9+\\-\\s()]+$"
+        message: "Invalid phone number format"
+      grade:
+        pattern: "^[1-9]|1[0-2]$"
+        message: "Grade must be 1-12"
+      school_id:
+        required: true
+        message: "Student must be linked to a school"
+      submission_rate:
+        range: [0, 100]
+        message: "Submission rate must be 0-100%"
+      access_rate:
+        range: [0, 100] 
+        message: "Access rate must be 0-100%"
+    
+    Performance:
+      student:
+        required: true
+        message: "Performance must be linked to a student"
+      activity:
+        required: true
+        message: "Performance must be linked to an activity"
+      enrollment:
+        required: true
+        message: "Performance must be linked to an enrollment"
+    
+    Enrollment:
+      batch:
+        required: true
+        message: "Enrollment must specify a batch"
+      course:
+        required: true
+        message: "Enrollment must specify a course"
+    
+    School:
+      pin:
+        pattern: "^[0-9]{6}$"
+        message: "PIN code must be 6 digits"
+
+# Educational Data Transformations - ENHANCED
+custom_processing:
+  field_transformations:
+    Student:
+      access_rate:
+        transform: "percentage_to_decimal"
+        validate_range: [0, 100]
+      submission_rate:
+        transform: "percentage_to_decimal"
+        validate_range: [0, 100]
+      rigour:
+        transform: "standardize_case"  # Low/High → low/high
+    Performance:
+      sent_:
+        transform: "to_boolean"
+      accessed_:
+        transform: "to_boolean" 
+      submitted_:
+        transform: "to_boolean"
+    Activities:
+      rigor:
+        transform: "standardize_case"  # Low/Medium/High → low/medium/high
+
+# Neo4j Configuration for Educational Data - ENHANCED
+neo4j:
+  use_doctype_as_label: true
+  additional_labels: ["Educational"]
+  property_case: "snake_case"
+  relationship_case: "UPPER_CASE"
+  import_batch_size: 1000
+  transaction_timeout: 120
+  
+  # ADDED: Indexes for better query performance
+  educational_indexes:
+    - node_label: "Student"
+      properties: ["school_id", "grade", "submission_rate", "access_rate"]
+    - node_label: "Performance"
+      properties: ["student", "activity", "enrollment", "submitted_"]
+    - node_label: "Enrollment" 
+      properties: ["batch", "course"]
+    - node_label: "Activities"
+      properties: ["content_skill", "rigor"]
+    - node_label: "School"
+      properties: ["city", "type"]
+
+# Monitoring for Educational Migration - ENHANCED
+monitoring:
+  generate_reports: true
+  report_formats: ["json", "html"]
+  include_data_quality_metrics: true
+  track_migration_performance: true
+  track_errors: true
+  max_errors_per_doctype: 50
+  progress_notifications:
+    enabled: true
+    notify_every: 100
+  
+  # ADDED: Educational-specific monitoring
+  educational_metrics:
+    track_relationship_coverage: true
+    validate_graph_connectivity: true
+    performance_link_integrity: true
+
+# ADDED: Post-migration validation queries
+post_migration_validation:
+  connectivity_tests:
+    - name: "student_school_links"
+      query: "MATCH (s:Student)-[:STUDIES_AT]->(sc:School) RETURN count(*) as linked_students"
+      expected_min: 1
+    
+    - name: "performance_chain"
+      query: "MATCH (s:Student)<-[:TRACKS_STUDENT]-(p:Performance)-[:MEASURES_ACTIVITY]->(a:Activities) RETURN count(*) as performance_records"
+      expected_min: 1
+    
+    - name: "enrollment_chain"
+      query: "MATCH (p:Performance)-[:RELATED_TO_ENROLLMENT]->(e:Enrollment)-[:BELONGS_TO_BATCH]->(b:Batch) RETURN count(*) as batch_connections"
+      expected_min: 1
+    
+    - name: "course_connections"
+      query: "MATCH (e:Enrollment)-[:ENROLLED_IN_COURSE]->(c:Course) RETURN count(*) as course_enrollments"
+      expected_min: 1
+
+# ADDED: Current limitations documentation
+known_limitations:
+  isolated_nodes:
+    - "Teacher: Only has teacher_name, no relationships possible"
+    - "Activities: No course links, connected only via Performance"
+    - "Course: No school links, connected only via Enrollment"
+    - "Batch: No teacher/course links, connected only via Enrollment"
+  
+  missing_relationships:
+    - "Teacher → School (needs school_id field)"
+    - "Activities → Course (needs course field)"
+    - "Course → School (needs school field)"
+    - "Batch → Teacher (needs teacher field)"
+  
+  recommendations:
+    - "Add school_id to Teacher DocType for teacher-school relationships"
+    - "Add course field to Activities DocType for activity-course mapping"
+    - "Add grade_level to Course DocType for better classification"

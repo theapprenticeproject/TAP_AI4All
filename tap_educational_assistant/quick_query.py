@@ -44,8 +44,8 @@ class OptimizedCachedRAG:
                 start_time = time.time()
                 
                 # Use lazy import to avoid slow startup
-                from tap_educational_assistant.ai_service.core.hybrid_rag_pipeline import IntelligentHybridEducationalRAG
-                self.rag_pipeline = IntelligentHybridEducationalRAG(user_id=self.user_id)
+                from tap_educational_assistant.ai_service.core.parallel_hybrid_rag_pipeline import ParallelEducationalRAG
+                self.rag_pipeline = ParallelEducationalRAG(user_id=self.user_id)
                 self.rag_available = True
                 
                 load_time = time.time() - start_time

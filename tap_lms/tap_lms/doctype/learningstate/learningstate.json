@@ -1,0 +1,118 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 11:43:09.669875",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "knowledge_map",
+  "skill_proficiencies",
+  "strengths",
+  "growth_areas",
+  "last_assessment_date",
+  "learning_style_preferences",
+  "cognitive_load_indicator",
+  "recent_knowledge_gain_rate",
+  "last_updated",
+  "competency_development",
+  "self_assessment_history",
+  "evidence_portfolio"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "knowledge_map",
+   "fieldtype": "JSON",
+   "label": "Knowledge Map"
+  },
+  {
+   "fieldname": "skill_proficiencies",
+   "fieldtype": "JSON",
+   "label": "Skill Proficiencies"
+  },
+  {
+   "fieldname": "strengths",
+   "fieldtype": "Text",
+   "label": "Strengths"
+  },
+  {
+   "fieldname": "growth_areas",
+   "fieldtype": "Text",
+   "label": "Growth Areas"
+  },
+  {
+   "fieldname": "last_assessment_date",
+   "fieldtype": "Data",
+   "label": "Last Assessment Date"
+  },
+  {
+   "fieldname": "learning_style_preferences",
+   "fieldtype": "JSON",
+   "label": "Learning Style Preferences"
+  },
+  {
+   "fieldname": "cognitive_load_indicator",
+   "fieldtype": "Select",
+   "label": "Cognitive Load Indicator",
+   "options": "Low\nMedium\nHigh"
+  },
+  {
+   "fieldname": "recent_knowledge_gain_rate",
+   "fieldtype": "Float",
+   "label": "Recent Knowledge Gain Rate"
+  },
+  {
+   "fieldname": "last_updated",
+   "fieldtype": "Datetime",
+   "label": "Last Updated"
+  },
+  {
+   "fieldname": "competency_development",
+   "fieldtype": "JSON",
+   "label": "Competency Development"
+  },
+  {
+   "fieldname": "self_assessment_history",
+   "fieldtype": "Table",
+   "label": "Self Assessment History",
+   "options": "StudentSelfAssessment"
+  },
+  {
+   "fieldname": "evidence_portfolio",
+   "fieldtype": "JSON",
+   "label": "Evidence Portfolio"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-20 20:24:46.717030",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "LearningState",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

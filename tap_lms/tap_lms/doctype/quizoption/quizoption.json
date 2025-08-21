@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2024-10-17 16:27:27.927015",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "option_text",
+  "option_number",
+  "option_translations"
+ ],
+ "fields": [
+  {
+   "fieldname": "option_text",
+   "fieldtype": "Data",
+   "label": "Option Text"
+  },
+  {
+   "fieldname": "option_number",
+   "fieldtype": "Int",
+   "label": "Option Number"
+  },
+  {
+   "fieldname": "option_translations",
+   "fieldtype": "Table",
+   "label": "Option Translations",
+   "options": "QuizOptionTranslation"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-09 14:37:07.639946",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "QuizOption",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

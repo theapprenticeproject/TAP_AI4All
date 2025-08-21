@@ -1,0 +1,31 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-20 23:59:49.246665",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "project_challenge"
+ ],
+ "fields": [
+  {
+   "fieldname": "project_challenge",
+   "fieldtype": "Link",
+   "label": "Project Challenge",
+   "options": "ProjectChallenge"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-04-20 23:59:49.246665",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "ProjectChallengesList",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

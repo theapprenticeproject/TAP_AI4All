@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-10-17 16:27:42.303797",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "question",
+  "question_number",
+  "question_type",
+  "options",
+  "points",
+  "correct_option",
+  "explanation",
+  "hint",
+  "question_translations"
+ ],
+ "fields": [
+  {
+   "fieldname": "question",
+   "fieldtype": "Text Editor",
+   "label": "Question"
+  },
+  {
+   "fieldname": "question_type",
+   "fieldtype": "Select",
+   "label": "Question Type",
+   "options": "Multiple Choice\nTrue/False\nShort Answer"
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Table",
+   "label": "Options",
+   "options": "QuizOption"
+  },
+  {
+   "fieldname": "points",
+   "fieldtype": "Int",
+   "label": "Points"
+  },
+  {
+   "fieldname": "correct_option",
+   "fieldtype": "Int",
+   "label": "Correct Option"
+  },
+  {
+   "fieldname": "question_number",
+   "fieldtype": "Int",
+   "label": "Question Number"
+  },
+  {
+   "fieldname": "explanation",
+   "fieldtype": "Text Editor",
+   "label": "Explanation"
+  },
+  {
+   "fieldname": "hint",
+   "fieldtype": "Text",
+   "label": "Hint"
+  },
+  {
+   "fieldname": "question_translations",
+   "fieldtype": "Table",
+   "label": "Question Translations",
+   "options": "QuizQuestionTranslation"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-09 14:34:22.759483",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "QuizQuestion",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

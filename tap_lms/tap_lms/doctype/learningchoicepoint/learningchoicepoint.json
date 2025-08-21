@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 14:34:04.785370",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "choice_timestamp",
+  "choice_type",
+  "options_presented",
+  "student_selection",
+  "impact_on_path"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "choice_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Choice Timestamp"
+  },
+  {
+   "fieldname": "choice_type",
+   "fieldtype": "Select",
+   "label": "Choice Type",
+   "options": "Content\nPath\nPace\nProject\nCollaboration"
+  },
+  {
+   "fieldname": "options_presented",
+   "fieldtype": "JSON",
+   "label": "Options Presented"
+  },
+  {
+   "fieldname": "student_selection",
+   "fieldtype": "Data",
+   "label": "Student Selection"
+  },
+  {
+   "fieldname": "impact_on_path",
+   "fieldtype": "Text",
+   "label": "Impact on path"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-19 14:34:04.785370",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "LearningChoicePoint",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,114 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{student}-{###}",
+ "creation": "2025-04-19 11:55:56.826380",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "average_response_time",
+  "completion_rate",
+  "session_frequency",
+  "peak_engagement_times",
+  "current_streak",
+  "last_activity_date",
+  "engagement_trend",
+  "re_engagement_attempts",
+  "sentiment_analysis",
+  "frustration_indicators",
+  "last_updated"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "average_response_time",
+   "fieldtype": "Data",
+   "label": "Average Response Time"
+  },
+  {
+   "fieldname": "completion_rate",
+   "fieldtype": "Data",
+   "label": "Completion Rate"
+  },
+  {
+   "fieldname": "session_frequency",
+   "fieldtype": "Float",
+   "label": "Session Frequency"
+  },
+  {
+   "fieldname": "peak_engagement_times",
+   "fieldtype": "JSON",
+   "label": "Peak Engagement Times"
+  },
+  {
+   "fieldname": "current_streak",
+   "fieldtype": "Int",
+   "label": "Current Streak"
+  },
+  {
+   "fieldname": "last_activity_date",
+   "fieldtype": "Date",
+   "label": "Last Activity Date"
+  },
+  {
+   "fieldname": "re_engagement_attempts",
+   "fieldtype": "Data",
+   "label": "Re_engagement Attempts"
+  },
+  {
+   "fieldname": "frustration_indicators",
+   "fieldtype": "JSON",
+   "label": "Frustration Indicators"
+  },
+  {
+   "fieldname": "last_updated",
+   "fieldtype": "Datetime",
+   "label": "Last Updated"
+  },
+  {
+   "fieldname": "sentiment_analysis",
+   "fieldtype": "Select",
+   "label": "Sentiment Analysis",
+   "options": "Positive\nNeutral\nNegative"
+  },
+  {
+   "fieldname": "engagement_trend",
+   "fieldtype": "Select",
+   "label": "Engagement Trend",
+   "options": "Increasing\nStable\nDecreasing"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-28 13:21:15.530777",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "EngagementState",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

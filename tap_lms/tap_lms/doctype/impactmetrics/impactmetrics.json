@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 14:00:08.125311",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "batch",
+  "school",
+  "course_vertical",
+  "time_period",
+  "start_date",
+  "end_date",
+  "student_count",
+  "completion_rate",
+  "average_mastery_level",
+  "engagement_statistics",
+  "learning_outcomes",
+  "teacher_feedback",
+  "improvement_areas"
+ ],
+ "fields": [
+  {
+   "fieldname": "batch",
+   "fieldtype": "Link",
+   "label": "Batch",
+   "options": "Batch"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "course_vertical",
+   "fieldtype": "Link",
+   "label": "Course Vertical",
+   "options": "Course Verticals"
+  },
+  {
+   "fieldname": "time_period",
+   "fieldtype": "Select",
+   "label": "Time Period",
+   "options": "Weekly\nMonthly\nQuarterly\nYearly"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "student_count",
+   "fieldtype": "Int",
+   "label": "Student Count"
+  },
+  {
+   "fieldname": "completion_rate",
+   "fieldtype": "Percent",
+   "label": "Completion Rate"
+  },
+  {
+   "fieldname": "average_mastery_level",
+   "fieldtype": "Float",
+   "label": "Average Mastery Level"
+  },
+  {
+   "fieldname": "engagement_statistics",
+   "fieldtype": "JSON",
+   "label": "Engagement Statistics"
+  },
+  {
+   "fieldname": "learning_outcomes",
+   "fieldtype": "JSON",
+   "label": "Learning Outcomes"
+  },
+  {
+   "fieldname": "teacher_feedback",
+   "fieldtype": "Text",
+   "label": "Teacher Feedback"
+  },
+  {
+   "fieldname": "improvement_areas",
+   "fieldtype": "Text",
+   "label": "Improvement Areas"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-19 14:00:08.125311",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "ImpactMetrics",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

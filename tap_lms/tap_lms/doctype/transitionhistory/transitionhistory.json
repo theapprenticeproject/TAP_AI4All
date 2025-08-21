@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 13:12:15.882230",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "timestamp",
+  "from_stage_type",
+  "from_stage",
+  "to_stage_type",
+  "to_stage",
+  "transition_rule",
+  "evaluator_used",
+  "state_factors",
+  "override_applied",
+  "success_indicator"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "from_stage_type",
+   "fieldtype": "Select",
+   "label": "From Stage Type",
+   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage"
+  },
+  {
+   "fieldname": "from_stage",
+   "fieldtype": "Dynamic Link",
+   "label": "From Stage",
+   "options": "from_stage_type"
+  },
+  {
+   "fieldname": "to_stage_type",
+   "fieldtype": "Select",
+   "label": "To Stage Type",
+   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage"
+  },
+  {
+   "fieldname": "to_stage",
+   "fieldtype": "Dynamic Link",
+   "label": "To Stage",
+   "options": "to_stage_type"
+  },
+  {
+   "fieldname": "transition_rule",
+   "fieldtype": "Text",
+   "label": "Transition Rule"
+  },
+  {
+   "fieldname": "evaluator_used",
+   "fieldtype": "Text",
+   "label": "Evaluator Used"
+  },
+  {
+   "fieldname": "state_factors",
+   "fieldtype": "JSON",
+   "label": "State Factors"
+  },
+  {
+   "default": "0",
+   "fieldname": "override_applied",
+   "fieldtype": "Check",
+   "label": "Override Applied"
+  },
+  {
+   "fieldname": "success_indicator",
+   "fieldtype": "Select",
+   "label": "Success Indicator",
+   "options": "Successful\nPartial\nFailed"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-29 11:33:47.497767",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "TransitionHistory",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,223 @@
+{
+ "actions": [],
+ "allow_events_in_timeline": 1,
+ "allow_import": 1,
+ "autoname": "format:{name1}-SC{#####}",
+ "creation": "2023-02-14 12:18:09.201445",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "name1",
+  "section_break_fxvp",
+  "model",
+  "type",
+  "status",
+  "board",
+  "department",
+  "year",
+  "keyword",
+  "column_break_1olh",
+  "address",
+  "city",
+  "pin",
+  "district",
+  "state",
+  "country",
+  "section_break_mjsn",
+  "headmaster_name",
+  "headmaster_phone",
+  "is_tfi",
+  "is_akanksha",
+  "column_break_reih",
+  "school_follow_up_frequency",
+  "hm_follow_up_frequency",
+  "tap_poc",
+  "section_break_gmac",
+  "poc"
+ ],
+ "fields": [
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "APS\nGOVT\nNGO\nPPP\nPMC\nPVT, GOVT. aided\nORG",
+   "reqd": 1
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City"
+  },
+  {
+   "fieldname": "keyword",
+   "fieldtype": "Data",
+   "label": "Keyword",
+   "unique": 1
+  },
+  {
+   "fieldname": "board",
+   "fieldtype": "Data",
+   "label": "Board Affiliation"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Regional Department"
+  },
+  {
+   "fieldname": "pin",
+   "fieldtype": "Data",
+   "label": "PIN Code",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Data",
+   "label": "Address"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Select",
+   "label": "Onboarding Year",
+   "options": "2022\n2023\n2024\n2025"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "New\nAssigned\nIn-progress\nOn-boarded\nDiscontinued"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "label": "State",
+   "options": "State"
+  },
+  {
+   "default": "India",
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "headmaster_name",
+   "fieldtype": "Data",
+   "label": "Headmaster Name"
+  },
+  {
+   "fieldname": "headmaster_phone",
+   "fieldtype": "Data",
+   "label": "Headmaster Phone"
+  },
+  {
+   "fieldname": "is_tfi",
+   "fieldtype": "Select",
+   "label": "Is TFI",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "is_akanksha",
+   "fieldtype": "Select",
+   "label": "Is Akanksha",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "school_follow_up_frequency",
+   "fieldtype": "Select",
+   "label": "School Follow up frequency",
+   "options": "Weekly\nBi-monthly\nMonthly\nQuarterly"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District",
+   "reqd": 1
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Link",
+   "label": "Model",
+   "options": "Tap Models"
+  },
+  {
+   "fieldname": "poc",
+   "fieldtype": "Table",
+   "label": "School POC",
+   "options": "School_POC"
+  },
+  {
+   "fieldname": "hm_follow_up_frequency",
+   "fieldtype": "Select",
+   "label": "HM Follow up frequency",
+   "options": "Weekly\nBi-monthly\nMonthly\nQuarterly"
+  },
+  {
+   "fieldname": "tap_poc",
+   "fieldtype": "Link",
+   "label": "TAP  POC",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_break_fxvp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_1olh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_mjsn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_reih",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gmac",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-08 23:26:33.487842",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "School",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "name1",
+ "track_changes": 1
+}

@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{stage_name}-{course_level}",
+ "creation": "2025-05-06 14:59:42.235054",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "stage_name",
+  "description",
+  "course_level",
+  "order",
+  "is_active",
+  "is_initial",
+  "required_for_completion",
+  "stage_type",
+  "linked_content",
+  "stage_flows",
+  "is_final"
+ ],
+ "fields": [
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description"
+  },
+  {
+   "fieldname": "course_level",
+   "fieldtype": "Link",
+   "label": "Course Level",
+   "options": "Course Level"
+  },
+  {
+   "fieldname": "order",
+   "fieldtype": "Int",
+   "label": "Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_initial",
+   "fieldtype": "Check",
+   "label": "Is Initial"
+  },
+  {
+   "fieldname": "required_for_completion",
+   "fieldtype": "Data",
+   "label": "Required For Completion"
+  },
+  {
+   "fieldname": "stage_type",
+   "fieldtype": "Select",
+   "label": "Stage Type",
+   "options": "Module\nChapter\nLesson\nAssessment\nProject"
+  },
+  {
+   "fieldname": "linked_content",
+   "fieldtype": "Dynamic Link",
+   "label": "Linked Content",
+   "options": "stage_type"
+  },
+  {
+   "fieldname": "stage_flows",
+   "fieldtype": "Table",
+   "label": "Stage Flows",
+   "options": "StageFlow"
+  },
+  {
+   "fieldname": "stage_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_final",
+   "fieldtype": "Check",
+   "label": "Is Final"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-04 11:06:27.978305",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "LearningStage",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

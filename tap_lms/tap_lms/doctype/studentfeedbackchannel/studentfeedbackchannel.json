@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-20 20:31:06.536664",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "feedback_type",
+  "feedback_content",
+  "submission_date",
+  "status",
+  "response",
+  "impact"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "feedback_type",
+   "fieldtype": "Select",
+   "label": "Feedback Type",
+   "options": "Content Suggestion\nPath Feedback\nSystem Improvement"
+  },
+  {
+   "fieldname": "feedback_content",
+   "fieldtype": "Text Editor",
+   "label": "Feedback Content"
+  },
+  {
+   "fieldname": "submission_date",
+   "fieldtype": "Datetime",
+   "label": "Submission Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Submitted\nUnder Review\nImplemented\nDeclined"
+  },
+  {
+   "fieldname": "response",
+   "fieldtype": "Text",
+   "label": "Response"
+  },
+  {
+   "fieldname": "impact",
+   "fieldtype": "Text",
+   "label": "Impact"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-20 20:31:06.536664",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "StudentFeedbackChannel",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 12:59:30.994117",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "timestamp",
+  "interaction_type",
+  "content",
+  "stage_type",
+  "stage",
+  "response_data",
+  "system_action",
+  "analysis_notes",
+  "learning_insights",
+  "followup_required",
+  "glific_message_id",
+  "student_agency_indicator",
+  "reflection_component",
+  "collaboration_context"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "interaction_type",
+   "fieldtype": "Select",
+   "label": "Interaction Type",
+   "options": "message\nquiz\nassignment\nhelp_request"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text",
+   "label": "Content"
+  },
+  {
+   "fieldname": "stage_type",
+   "fieldtype": "Select",
+   "label": "Stage Type",
+   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage"
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Dynamic Link",
+   "label": "Stage",
+   "options": "stage_type"
+  },
+  {
+   "fieldname": "response_data",
+   "fieldtype": "JSON",
+   "label": "Response Data"
+  },
+  {
+   "fieldname": "system_action",
+   "fieldtype": "Text",
+   "label": "System Action"
+  },
+  {
+   "fieldname": "analysis_notes",
+   "fieldtype": "Text",
+   "label": "Analysis Notes"
+  },
+  {
+   "fieldname": "learning_insights",
+   "fieldtype": "Text",
+   "label": "Learning Insights"
+  },
+  {
+   "default": "0",
+   "fieldname": "followup_required",
+   "fieldtype": "Check",
+   "label": "Followup Required"
+  },
+  {
+   "fieldname": "glific_message_id",
+   "fieldtype": "Data",
+   "label": "Glific Message Id"
+  },
+  {
+   "fieldname": "student_agency_indicator",
+   "fieldtype": "Select",
+   "label": "Student Agency Indicator",
+   "options": "Directed\nGuided\nSelf-Determined"
+  },
+  {
+   "default": "0",
+   "fieldname": "reflection_component",
+   "fieldtype": "Check",
+   "label": "Reflection_component"
+  },
+  {
+   "fieldname": "collaboration_context",
+   "fieldtype": "Link",
+   "label": "Collaboration Context",
+   "options": "CollaborativeGroup"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-29 11:34:15.212596",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "InteractionLog",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

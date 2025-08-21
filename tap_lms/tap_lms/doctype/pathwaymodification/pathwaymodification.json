@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 14:29:00.036796",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "modification_date",
+  "student",
+  "original_stage_type",
+  "original_stage",
+  "modified_stage_type",
+  "modified_stage",
+  "modification_type",
+  "reason",
+  "approval_status",
+  "approved_by",
+  "approval_date",
+  "teacher_notes",
+  "impact_assessment"
+ ],
+ "fields": [
+  {
+   "fieldname": "modification_date",
+   "fieldtype": "Datetime",
+   "label": "Modification Date"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "original_stage_type",
+   "fieldtype": "Select",
+   "label": "Original Stage Type",
+   "options": "Module\nChapter\nLesson"
+  },
+  {
+   "fieldname": "original_stage",
+   "fieldtype": "Dynamic Link",
+   "label": "Original Stage",
+   "options": "original_stage_type"
+  },
+  {
+   "fieldname": "modified_stage_type",
+   "fieldtype": "Select",
+   "label": "Modified Stage Type",
+   "options": "Module\nChapter\nLesson"
+  },
+  {
+   "fieldname": "modified_stage",
+   "fieldtype": "Dynamic Link",
+   "label": "Modified Stage",
+   "options": "modified_stage_type"
+  },
+  {
+   "fieldname": "modification_type",
+   "fieldtype": "Select",
+   "label": "Modification Type",
+   "options": "Addition\nRemoval\nReordering\nReplacement"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "label": "Approval Status",
+   "options": "Pending\nApproved\nRejected\nModified"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approval_date",
+   "fieldtype": "Datetime",
+   "label": "Approval Date"
+  },
+  {
+   "fieldname": "teacher_notes",
+   "fieldtype": "Data",
+   "label": "Teacher Notes"
+  },
+  {
+   "fieldname": "impact_assessment",
+   "fieldtype": "Text",
+   "label": "Impact Assessment"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-04-19 14:30:16.502938",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "PathwayModification",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

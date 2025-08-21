@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-10-17 20:26:18.434751",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "assignment",
+  "due_date",
+  "submission_status",
+  "submission",
+  "plagiarism_check_status",
+  "plagiarism_score",
+  "feedback_request_id",
+  "feedback_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "assignment",
+   "fieldtype": "Link",
+   "label": "Assignment",
+   "options": "Assignment"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "submission_status",
+   "fieldtype": "Select",
+   "label": "Submission Status",
+   "options": "Not Graded\nGrading in Progress\nGraded"
+  },
+  {
+   "fieldname": "submission",
+   "fieldtype": "Link",
+   "label": "Submission",
+   "options": "Submission"
+  },
+  {
+   "fieldname": "plagiarism_check_status",
+   "fieldtype": "Select",
+   "label": "Plagiarism Check Status",
+   "options": "Pending\nIn Progress\nCompleted\nFailed"
+  },
+  {
+   "fieldname": "plagiarism_score",
+   "fieldtype": "Float",
+   "label": "Plagiarism Score"
+  },
+  {
+   "fieldname": "feedback_request_id",
+   "fieldtype": "Link",
+   "label": "Feedback Request ID",
+   "options": "Feedback Request"
+  },
+  {
+   "fieldname": "feedback_status",
+   "fieldtype": "Select",
+   "label": "Feedback Status",
+   "options": "Pending\nGenerated\nDelivered"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-06 15:21:49.406409",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "Student Assignment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

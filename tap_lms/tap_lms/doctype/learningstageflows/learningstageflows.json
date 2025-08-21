@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-06 23:29:39.984605",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student_status",
+  "glific_flow_id",
+  "next_stage",
+  "flow_type",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "student_status",
+   "fieldtype": "Select",
+   "label": "Student Status",
+   "options": "not_started\nassigned\nin_progress\ncompleted\nincomplete\nin_loop\nfailed\nskipped"
+  },
+  {
+   "fieldname": "glific_flow_id",
+   "fieldtype": "Data",
+   "label": "Glific Flow Id"
+  },
+  {
+   "fieldname": "flow_type",
+   "fieldtype": "Select",
+   "label": "Flow Type",
+   "options": "Group\nPersonal"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "next_stage",
+   "fieldtype": "Link",
+   "label": "Next Stage",
+   "options": "LearningStage"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-20 00:25:18.108726",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "LearningStageFlows",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

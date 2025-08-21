@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 14:52:48.774551",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "pro_name",
+  "description",
+  "related_modules",
+  "competencies_developed",
+  "collaboration_type",
+  "community_connection",
+  "required_resources",
+  "content_delivery_format"
+ ],
+ "fields": [
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "related_modules",
+   "fieldtype": "Table",
+   "label": "Related Modules",
+   "options": "CourseModuleList"
+  },
+  {
+   "fieldname": "competencies_developed",
+   "fieldtype": "Table",
+   "label": "Competencies Developed",
+   "options": "CompetencyList"
+  },
+  {
+   "fieldname": "collaboration_type",
+   "fieldtype": "Select",
+   "label": "Collaboration Type",
+   "options": "Individual\nPairs\nSmall Group\nClass"
+  },
+  {
+   "fieldname": "community_connection",
+   "fieldtype": "Text",
+   "label": "Community Connection"
+  },
+  {
+   "fieldname": "required_resources",
+   "fieldtype": "Text",
+   "label": "Required Resources"
+  },
+  {
+   "fieldname": "content_delivery_format",
+   "fieldtype": "Text",
+   "label": "Content Delivery Format"
+  },
+  {
+   "fieldname": "pro_name",
+   "fieldtype": "Data",
+   "label": "Name"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-20 23:48:35.962877",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "ProjectChallenge",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

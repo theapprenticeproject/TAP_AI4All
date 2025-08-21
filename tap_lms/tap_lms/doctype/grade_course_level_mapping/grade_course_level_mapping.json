@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{academic_year}-{course_vertical}-{grade}-{student_type}-{assigned_course_level}",
+ "creation": "2025-07-19 11:11:38.835091",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "mapping_name",
+  "academic_year",
+  "course_vertical",
+  "grade",
+  "student_type",
+  "assigned_course_level",
+  "is_active",
+  "notes",
+  "created_by",
+  "creation_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "mapping_name",
+   "fieldtype": "Data",
+   "label": "Mapping Name"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Select",
+   "label": "Academic Year",
+   "options": "\n2025-26\n2026-27\n2027-28"
+  },
+  {
+   "fieldname": "course_vertical",
+   "fieldtype": "Link",
+   "label": "Course Vertical",
+   "options": "Course Verticals"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Select",
+   "label": "Grade",
+   "options": "4\n5\n6\n7\n8\n9\n10\n11\n12"
+  },
+  {
+   "fieldname": "student_type",
+   "fieldtype": "Select",
+   "label": "Student Type",
+   "options": "New\nOld"
+  },
+  {
+   "fieldname": "assigned_course_level",
+   "fieldtype": "Link",
+   "label": "Assigned Course Level",
+   "options": "Course Level"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "is_active",
+   "options": "1"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "notes"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "created_by",
+   "options": "User"
+  },
+  {
+   "fieldname": "creation_date",
+   "fieldtype": "Date",
+   "label": "Creation Date"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-23 15:16:55.426884",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "Grade Course Level Mapping",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

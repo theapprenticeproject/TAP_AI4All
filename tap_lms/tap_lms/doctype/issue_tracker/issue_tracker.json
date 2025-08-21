@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format: IT{DD}-{MM}-{######}",
+ "creation": "2024-07-08 11:19:39.255217",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "issue",
+  "city",
+  "school",
+  "grade",
+  "course",
+  "student",
+  "date_of_reporting",
+  "time_of_reporting",
+  "reason_of_the_issue",
+  "date_of_resolution",
+  "time_of_resolution",
+  "status",
+  "solved_by",
+  "solution"
+ ],
+ "fields": [
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "issue",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Issue",
+   "reqd": 1
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Select",
+   "label": "Grade",
+   "options": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Data",
+   "label": "Course"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "date_of_reporting",
+   "fieldtype": "Date",
+   "label": "Date of Reporting"
+  },
+  {
+   "fieldname": "time_of_reporting",
+   "fieldtype": "Time",
+   "label": "Time of Reporting"
+  },
+  {
+   "fieldname": "reason_of_the_issue",
+   "fieldtype": "Data",
+   "label": "Reason of the issue"
+  },
+  {
+   "fieldname": "date_of_resolution",
+   "fieldtype": "Date",
+   "label": "Date of Resolution"
+  },
+  {
+   "fieldname": "time_of_resolution",
+   "fieldtype": "Time",
+   "label": "Time of Resolution"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Not attended\nPending\nIn-progress\nResolved"
+  },
+  {
+   "fieldname": "solved_by",
+   "fieldtype": "Data",
+   "label": "Solved By"
+  },
+  {
+   "fieldname": "solution",
+   "fieldtype": "Data",
+   "label": "Solution"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-07-08 17:15:06.698099",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "Issue Tracker",
+ "name_case": "Title Case",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_views": 1
+}

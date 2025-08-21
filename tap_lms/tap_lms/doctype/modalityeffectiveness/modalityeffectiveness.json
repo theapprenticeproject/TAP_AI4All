@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-19 13:50:12.737784",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "content_format",
+  "effectiveness_score",
+  "engagement_metrics",
+  "preference_indicator",
+  "content_types",
+  "last_updated"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "content_format",
+   "fieldtype": "Select",
+   "label": "Content Format",
+   "options": "Text\nImage\nAudio\nInteractive\nMixed"
+  },
+  {
+   "fieldname": "effectiveness_score",
+   "fieldtype": "Float",
+   "label": "Effectiveness Score"
+  },
+  {
+   "fieldname": "engagement_metrics",
+   "fieldtype": "JSON",
+   "label": "Engagement Metrics"
+  },
+  {
+   "fieldname": "preference_indicator",
+   "fieldtype": "Float",
+   "label": "Preference Indicator"
+  },
+  {
+   "fieldname": "content_types",
+   "fieldtype": "JSON",
+   "label": "Content Types"
+  },
+  {
+   "fieldname": "last_updated",
+   "fieldtype": "Datetime",
+   "label": "Last Updated"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-19 13:50:12.737784",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "ModalityEffectiveness",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

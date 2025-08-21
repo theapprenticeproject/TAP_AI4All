@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format: IMSUB-{YY}{MM}{DD}{####}",
+ "creation": "2024-09-06 14:55:57.040930",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "assign_id",
+  "student_id",
+  "img_url",
+  "status",
+  "created_at",
+  "grade",
+  "plagiarism_result",
+  "generated_feedback",
+  "feedback_summary",
+  "overall_feedback",
+  "completed_at",
+  "similar_sources"
+ ],
+ "fields": [
+  {
+   "fieldname": "assign_id",
+   "fieldtype": "Data",
+   "label": "Assignment ID"
+  },
+  {
+   "fieldname": "student_id",
+   "fieldtype": "Data",
+   "label": "Student ID"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nProcessing\nCompleted\nFailed"
+  },
+  {
+   "default": "now",
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "label": "Created At"
+  },
+  {
+   "fieldname": "img_url",
+   "fieldtype": "Data",
+   "label": "Image URL"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Float",
+   "label": "Grade"
+  },
+  {
+   "fieldname": "plagiarism_result",
+   "fieldtype": "Data",
+   "label": "Plagiarism Result"
+  },
+  {
+   "fieldname": "generated_feedback",
+   "fieldtype": "Text",
+   "label": "Generated Feedback"
+  },
+  {
+   "fieldname": "feedback_summary",
+   "fieldtype": "Text",
+   "label": "Feedback Summary"
+  },
+  {
+   "fieldname": "overall_feedback",
+   "fieldtype": "Text",
+   "label": "Overall Feedback"
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed_at"
+  },
+  {
+   "fieldname": "similar_sources",
+   "fieldtype": "Data",
+   "label": "Similar Sources"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-06 15:38:40.194877",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "ImgSubmission",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{student}-{stage}-{status}-{###}",
+ "creation": "2025-04-19 12:03:39.737144",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "stage_type",
+  "stage",
+  "status",
+  "start_timestamp",
+  "last_activity_timestamp",
+  "completion_timestamp",
+  "attempt_count",
+  "performance_metrics",
+  "customization_parameters",
+  "notes",
+  "retry_scheduled",
+  "mastery_level",
+  "course_context",
+  "stage_history"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student ",
+   "options": "Student"
+  },
+  {
+   "fieldname": "stage_type",
+   "fieldtype": "Select",
+   "label": "Stage Type",
+   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage"
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Dynamic Link",
+   "label": "Stage",
+   "options": "stage_type"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "not_started\nassigned\nin_progress\ncompleted\nincomplete\nin_loop\nfailed\nskipped"
+  },
+  {
+   "fieldname": "start_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Start Timestamp"
+  },
+  {
+   "fieldname": "last_activity_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Last Activity Timestamp"
+  },
+  {
+   "fieldname": "completion_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Completion Timestamp"
+  },
+  {
+   "fieldname": "attempt_count",
+   "fieldtype": "Int",
+   "label": "Attempt Count"
+  },
+  {
+   "fieldname": "performance_metrics",
+   "fieldtype": "JSON",
+   "label": "Performance Metrics"
+  },
+  {
+   "fieldname": "customization_parameters",
+   "fieldtype": "JSON",
+   "label": "Customization Parameters"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "retry_scheduled",
+   "fieldtype": "Datetime",
+   "label": "Retry Scheduled"
+  },
+  {
+   "fieldname": "mastery_level",
+   "fieldtype": "Select",
+   "label": "Mastery Level",
+   "options": "Struggling\nBasic\nProficient\nAdvanced"
+  },
+  {
+   "fieldname": "course_context",
+   "fieldtype": "Link",
+   "label": "Course Context",
+   "options": "Course Level"
+  },
+  {
+   "fieldname": "stage_history",
+   "fieldtype": "Long Text",
+   "label": "Stage History"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-28 01:04:21.453921",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "StudentStageProgress",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

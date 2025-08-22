@@ -16,12 +16,25 @@ from tap_lms.infra.db import get_sqldb, get_allowlisted_tables
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_RULES = """You are a SQL assistant for TAP LMS (MariaDB).
-- The PRIMARY KEY of most Frappe DocTypes is `name`.
-- Display labels often live in `name1`.
-- Use only tables visible to you (agent schema).
-- Always add LIMIT for listing queries.
-- Never invent columns; inspect schema first when unsure.
+from tap_lms.infra.sql_catalog import load_schema
+schema = load_schema()
+
+allowlisted = schema["allowlist"]
+joins = schema["allowed_joins"]
+tables = schema["tables"]
+guardrails = schema["guardrails"]
+
+SYSTEM_RULES = f"""
+You are a SQL agent for TAP LMS.
+
+Guardrails:
+- {'; '.join(guardrails)}
+
+Tables:
+{chr(10).join([f"- {t}: {tables[t]['description']}" for t in allowlisted if t in tables])}
+
+Allowed joins ONLY:
+{chr(10).join([f"- {j['left_table']}.{j['left_key']} = {j['right_table']}.{j['right_key']} ({j['why']})" for j in joins])}
 """
 
 def _get_llm() -> Optional[ChatOpenAI]:

@@ -52,7 +52,7 @@ class TAPConfig:
         if not site_config and os.getenv("USE_FRAPPE_SITE_CONFIG", "false").lower() == "true":
             site_config = _read_site_config_from_path()
 
-        # 3) Defaults (same as your version)
+        # 3) Defaults 
         cfg = {
             # API Keys
             "openai_api_key": "",

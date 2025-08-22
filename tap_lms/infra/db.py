@@ -27,41 +27,60 @@ def _get_mariadb_uri() -> str:
 
     return f"mysql+pymysql://{user}:{pwd}@{host}:{port}/{db}"
 
+def _get_existing_tables(uri: str) -> Set[str]:
+    """Return the set of actual table names present in this MariaDB schema."""
+    eng = create_engine(uri)
+    with eng.connect() as conn:
+        # Works on MariaDB/MySQL
+        rows = conn.execute(
+            text("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()")
+        ).fetchall()
+    return {r[0] for r in rows}
+
 # build allow-list from DocTypes in a given Frappe module/app
 def get_allowlisted_tables(
-    module_name: Optional[str] = "TAP LMS",  # change if module name differs
+    module_name: Optional[str] = "TAP LMS",
     extra_doctypes: Optional[Iterable[str]] = None,
     exclude_doctypes: Optional[Iterable[str]] = None,
 ) -> List[str]:
     """
-    Return ['tabDoctypeA', 'tabDoctypeB', ...] limited to your app/module.
-    - module_name: DocType.module value to filter (e.g., "TAP LMS")
-    - extra_doctypes: iterable of DocType names to force-include
-    - exclude_doctypes: iterable of DocType names to exclude (even if module matches)
+    Build ['tabX', 'tabY', ...] for DocTypes in your app/module that actually have backing tables.
+    - Excludes Single DocTypes (issingle=1) and Virtual DocTypes.
+    - Intersects with information_schema to avoid missing-table errors.
     """
-    include = set()
-    try:
-        filters = {}
-        if module_name:
-            filters["module"] = module_name
-        names = frappe.get_all("DocType", filters=filters, pluck="name")
+    include: Set[str] = set()
 
-        include.update(names)
-        if extra_doctypes:
-            include.update(extra_doctypes)
-        if exclude_doctypes:
-            include.difference_update(exclude_doctypes)
+    # 1) Pull DocTypes from Frappe, excluding Singles/Virtual
+    filters = {"issingle": 0, "is_virtual": 0}
+    if module_name:
+        filters["module"] = module_name
 
-        # convert DocType -> table name
-        tables = [f"tab{n}" for n in sorted(include)]
-        # hard exclude obvious system/core tables if somehow present
-        system_prefixes = {"__", "tab_"}  # __Auth, tab__...
-        tables = [t for t in tables if not any(t.startswith(p) for p in system_prefixes)]
-        return tables
-    except Exception as e:
-        # fallback to a conservative minimal set if discovery fails
-        logger.warning("Allowlist discovery failed: %s", e)
-        return []
+    names = frappe.get_all("DocType", filters=filters, pluck="name")
+    include.update(names)
+
+    if extra_doctypes:
+        include.update(extra_doctypes)
+    if exclude_doctypes:
+        include.difference_update(exclude_doctypes)
+
+    # Convert DocType -> table name
+    candidate_tables = {f"tab{n}" for n in include}
+
+    # 2) Keep only tables that actually exist in the DB
+    uri = _get_mariadb_uri()
+    existing = _get_existing_tables(uri)
+    allowlisted = sorted(candidate_tables & existing)
+
+    # Log any that were dropped
+    dropped = sorted(candidate_tables - existing)
+    if dropped:
+        logger.info("Skipping non-existent tables (Singles/virtual or not in schema): %s", ", ".join(dropped))
+
+    # 3) Hard exclude obvious system patterns just in case
+    system_prefixes = {"__", "tab_"}  # e.g., __Auth, tab__something
+    allowlisted = [t for t in allowlisted if not any(t.startswith(p) for p in system_prefixes)]
+
+    return allowlisted
 
 def get_sqldb(
     include_tables: Optional[Iterable[str]] = None,
@@ -69,23 +88,20 @@ def get_sqldb(
 ) -> SQLDatabase:
     """
     Return a LangChain SQLDatabase bound to MariaDB (Frappe).
-    If include_tables is None, we auto-allowlist by module.
+    If include_tables is None, auto-allowlist by module & real tables.
     """
     uri = _get_mariadb_uri()
     if include_tables is None:
         include_tables = get_allowlisted_tables(module_name="TAP LMS")
         if not include_tables:
-            # absolute fallback: expose only the most relevant app tables you know you'll need
-            include_tables = [
-                # put a safe minimal subset here if needed
-                # e.g. 'tabStudent', 'tabSchool', 'tabEnrollment', ...
-            ]
+            logger.warning("Allowlist is empty; falling back to no include_tables (exposes all tables).")
+            include_tables = None
+
     return SQLDatabase.from_uri(
         uri,
         include_tables=list(include_tables) if include_tables else None,
         sample_rows_in_table_info=sample_rows_in_table_info,
     )
-
 
 def self_test() -> bool:
     """
@@ -98,32 +114,16 @@ def self_test() -> bool:
     safe_uri_tail = uri.split("@")[-1]
     print(f"🔗 MariaDB: @{safe_uri_tail}")
 
+    from sqlalchemy import create_engine, text
     eng = create_engine(uri)
     with eng.connect() as conn:
         ok = conn.execute(text("SELECT 1 AS ok")).scalar()
         print(f"✅ SQL ping: {ok}")
 
-    # NEW: show allowlisted tables
     allowlist = get_allowlisted_tables(module_name="TAP LMS")
-    print(f"✅ Allowlisted DocTypes (count={len(allowlist)}): {', '.join(allowlist[:20])}{' ...' if len(allowlist) > 20 else ''}")
+    print(f"✅ Allowlisted tables (count={len(allowlist)}): {', '.join(allowlist[:20])}{' ...' if len(allowlist) > 20 else ''}")
 
-    db = get_sqldb(sample_rows_in_table_info=1)  # now uses allowlist by default
+    db = get_sqldb(sample_rows_in_table_info=1)
     tables = sorted(db.get_usable_table_names())
     print(f"📋 Tables visible to agent (count={len(tables)}): {', '.join(tables[:20])}{' ...' if len(tables) > 20 else ''}")
-
-    # Optional: Neo4j quick check if configured
-    neo = get_neo4j_config()
-    if neo.get("uri"):
-        try:
-            from neo4j import GraphDatabase
-
-            drv = GraphDatabase.driver(neo["uri"], auth=(neo["user"], neo["password"]))
-            with drv.session(database=neo.get("database", "neo4j")) as s:
-                msg = s.run("RETURN 'ok' AS status").single()["status"]
-                print(f"✅ Neo4j ping: {msg}")
-            drv.close()
-        except Exception as e:
-            print(f"⚠️ Neo4j check skipped/failed: {e}")
-
-    print("🎉 self_test completed.")
     return True

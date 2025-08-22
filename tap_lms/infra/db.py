@@ -5,7 +5,7 @@ import logging
 from typing import Iterable, List, Optional
 
 import frappe
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from langchain_community.utilities import SQLDatabase
 
 from tap_lms.infra.config import get_config, get_neo4j_config
@@ -82,24 +82,43 @@ def get_allowlisted_tables(
 
     return allowlisted
 
+def _discover_tables(database_uri: str) -> set:
+    eng = create_engine(database_uri)
+    try:
+        insp = inspect(eng)
+        return set(insp.get_table_names())
+    finally:
+        eng.dispose()
+
 def get_sqldb(
-    include_tables: Optional[Iterable[str]] = None,
-    sample_rows_in_table_info: int = 3,
+    include_tables: Optional[List[str]] = None,
+    sample_rows_in_table_info: int = 2,
 ) -> SQLDatabase:
     """
-    Return a LangChain SQLDatabase bound to MariaDB (Frappe).
-    If include_tables is None, auto-allowlist by module & real tables.
+    Return a LangChain SQLDatabase with an allowlist that’s validated
+    against the live MariaDB. Missing tables are auto-dropped (with a warning).
     """
-    uri = _get_mariadb_uri()
-    if include_tables is None:
-        include_tables = get_allowlisted_tables(module_name="TAP LMS")
+    database_uri = _get_mariadb_uri()
+
+    # Validate allowlist against actual DB tables
+    if include_tables:
+        actual = _discover_tables(database_uri)
+        missing = sorted(set(include_tables) - actual)
+        if missing:
+            logger.warning(
+                "Dropping %d missing tables from allowlist: %s",
+                len(missing), ", ".join(missing)
+            )
+        include_tables = [t for t in include_tables if t in actual]
         if not include_tables:
-            logger.warning("Allowlist is empty; falling back to no include_tables (exposes all tables).")
-            include_tables = None
+            logger.warning("All allowlisted tables were missing; falling back to full visibility.")
+
+    # If list becomes empty after filtering, pass None to expose all (or handle as you prefer)
+    safe_include = include_tables if include_tables else None
 
     return SQLDatabase.from_uri(
-        uri,
-        include_tables=list(include_tables) if include_tables else None,
+        database_uri,
+        include_tables=safe_include,
         sample_rows_in_table_info=sample_rows_in_table_info,
     )
 

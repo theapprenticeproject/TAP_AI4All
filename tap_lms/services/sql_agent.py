@@ -88,60 +88,78 @@ _SQL_COL_RE = re.compile(r"\b(\w+)\.(\w+)\b")
 
 from typing import Any, Iterable, Optional
 
-def _extract_candidate_sql(intermediate_steps: Iterable[Any]) -> Optional[str]:
+def _extract_candidate_sql(intermediate_steps) -> str:
     """
-    Robustly scan LangChain intermediate steps to find the most recent SQL query.
-    Handles common formats:
-      - list[tuple[AgentAction, str]]
-      - list[dict] with keys like {'tool': 'sql_db_query', 'tool_input': '...'}
-    Returns the last SQL string found, or None.
+    Robustly pull the candidate SQL from LangChain agent intermediate steps.
+    Looks for AgentAction.tool == 'sql_db_query' or any SQL-looking string.
+    Returns empty string if not found.
     """
-    last_sql: Optional[str] = None
+    # 1) Preferred path: inspect AgentAction objects
+    try:
+        for step in intermediate_steps:
+            # step is typically a tuple: (AgentAction, observation)
+            action = None
+            if isinstance(step, (list, tuple)) and step:
+                action = step[0]
+            else:
+                action = step
 
-    def _to_str(x: Any) -> Optional[str]:
-        if x is None:
-            return None
-        if isinstance(x, str):
-            return x
-        if isinstance(x, dict):
-            # sometimes tool_input is {"query": "..."}
-            if "query" in x and isinstance(x["query"], str):
-                return x["query"]
-        # best-effort stringification
-        return str(x)
+            tool = getattr(action, "tool", None)
+            tool_input = getattr(action, "tool_input", None)
 
-    for step in intermediate_steps or []:
-        tool_name = None
-        tool_input = None
+            if tool and "sql" in str(tool).lower():
+                # tool_input can be str or dict depending on LC version
+                if isinstance(tool_input, str) and "select" in tool_input.lower():
+                    sql = tool_input.strip()
+                    if not sql.endswith(";"):
+                        sql += ";"
+                    return sql
+                if isinstance(tool_input, dict):
+                    for k in ("query", "sql"):
+                        v = tool_input.get(k)
+                        if isinstance(v, str) and "select" in v.lower():
+                            sql = v.strip()
+                            if not sql.endswith(";"):
+                                sql += ";"
+                            return sql
+    except Exception:
+        pass
 
-        # Format A: (AgentAction, observation)
-        if isinstance(step, tuple) and step:
-            action = step[0]
-            if hasattr(action, "tool"):
-                tool_name = getattr(action, "tool", None)
-            if hasattr(action, "tool_input"):
-                tool_input = getattr(action, "tool_input", None)
+    # 2) Fallback: regex search across stringified steps
+    try:
+        blob = "\n".join([str(s) for s in intermediate_steps])
+        m = re.search(r"(SELECT\b[\s\S]+?;)", blob, flags=re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    except Exception:
+        pass
 
-        # Format B: dict-based
-        elif isinstance(step, dict):
-            tool_name = step.get("tool") or step.get("action")
-            tool_input = step.get("tool_input") or step.get("input") or step.get("action_input")
+    return ""
 
-        # Only grab SQL tools
-        if tool_name in (
-            "sql_db_query",
-            "sql_db_query_checker",
-            "query_sql_db",
-            "sql_db_schema",
-            "sql_db_list_tables",
-        ):
-            s = _to_str(tool_input)
-            # heuristics: keep proper SQL statements only
-            if s and any(tok in s.lower() for tok in ("select", "insert", "update", "delete", "with ")):
-                last_sql = s
 
-    return last_sql
+_SQL_TABLE_RE = re.compile(
+    r"\b(?:FROM|JOIN)\s+([`\"]?[\w\.]+[`\"]?)",
+    flags=re.IGNORECASE
+)
 
+def _tables_in_sql(sql: str) -> List[str]:
+    """Extract table names from a SELECT using basic regex over FROM/JOIN."""
+    if not sql:
+        return []
+    candidates = _SQL_TABLE_RE.findall(sql)
+    # normalize backticks/quotes
+    cleaned = []
+    for t in candidates:
+        t = t.strip().strip("`").strip('"')
+        # Optional: filter out subqueries aliases etc.; keeping simple here
+        cleaned.append(t)
+    # de-dup preserve order
+    seen, out = set(), []
+    for t in cleaned:
+        if t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
 
 def _violates_allowlist(sql: str) -> Tuple[bool, str]:
     """
@@ -247,6 +265,37 @@ def answer_sql(q: str) -> Dict[str, Any]:
         },
     }
 
+def explain_sql(q: str) -> Dict[str, Any]:
+    """
+    Build agent, ask for a plan, extract the candidate SQL without executing it.
+    Returns SQL text + detected tables + allowlist check.
+    """
+    t0 = time.time()
+    agent, db, allowlisted = build_sql_agent()
+
+    # Invoke once; we will parse the candidate SQL from intermediate steps.
+    # We do NOT run db.run() here.
+    result = agent.invoke({"input": q})
+    intermediate = result.get("intermediate_steps", []) if isinstance(result, dict) else []
+
+    sql = _extract_candidate_sql(intermediate)
+    tables = _tables_in_sql(sql)
+    # allowlist presence check
+    allowlist_set = set(allowlisted or [])
+    used_not_allowed = [t for t in tables if t not in allowlist_set]
+
+    return {
+        "question": q,
+        "engine": "sql",
+        "success": bool(sql),
+        "execution_time": time.time() - t0,
+        "candidate_sql": sql,
+        "tables_detected": tables,
+        "allowlist_ok": len(used_not_allowed) == 0,
+        "not_in_allowlist": used_not_allowed,
+    }
+
+
 
 # ---------- Bench CLI ----------
 def cli(q: str):
@@ -254,6 +303,6 @@ def cli(q: str):
     Bench command:
       bench execute tap_lms.services.sql_agent.cli --kwargs "{'q':'how many students in grade 9'}"
     """
-    out = answer_sql(q)
+    out = explain_sql(q)
     print(json.dumps(out, indent=2))
     return out

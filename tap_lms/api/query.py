@@ -13,3 +13,16 @@ def query(q: str, engine: str = "sql", limit: int = 50):
     out = answer_sql(q)
     # Optional: respect limit if your agent supports it
     return out  # Frappe will JSON-serialize dicts
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def explain(q: str):
+    """
+    Explain what SQL the agent intends to run (no execution).
+    Usage:
+      curl -s -G "http://localhost:8000/api/method/tap_lms.api.query.explain" \
+        -H "Authorization: token KEY:SECRET" \
+        --data-urlencode "q=list students in grade 9 with school"
+    """
+    from tap_lms.services.sql_agent import explain_sql
+    out = explain_sql(q)
+    return out

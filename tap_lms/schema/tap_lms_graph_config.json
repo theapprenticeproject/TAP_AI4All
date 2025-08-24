@@ -1,0 +1,63 @@
+{
+  "graph": {
+    "labels": [
+      "Student","School","Enrollment","Course Level","Batch","Teacher",
+      "Activities","Performance","CollaborativeGroup","StudentPeerGroup"
+    ],
+    "id_props": {
+      "default": "name",
+      "Student": "name",
+      "School": "name",
+      "Activities": "name"
+    },
+    "display_props": {
+      "default": "name1",
+      "Teacher": "teachname"
+    },
+    "relationship_rules": [
+      {"from": "Student", "field": "school_id", "to": "School", "type": "STUDIES_AT"},
+      {"from": "Performance", "field": "student", "to": "Student", "type": "TRACKS_STUDENT"},
+      {"from": "Performance", "field": "activity", "to": "Activities", "type": "MEASURES_ACTIVITY"},
+      {"from": "Performance", "field": "enrollment", "to": "Enrollment", "type": "RELATED_TO_ENROLLMENT"},
+      {"from": "Enrollment", "field": "course", "to": "Course Level", "type": "ENROLLED_IN_COURSE"},
+      {"from": "Enrollment", "field": "batch", "to": "Batch", "type": "BELONGS_TO_BATCH"},
+      {"from": "CollaborativeGroup", "field": "facilitator", "to": "Teacher", "type": "FACILITATED_BY"},
+      {"from": "StudentPeerGroup", "field": "group", "to": "CollaborativeGroup", "type": "MEMBER_OF"}
+    ]
+  },
+  "embeddings": {
+    "indexes": [
+      {
+        "name": "lms_content_embeddings",
+        "dimension": 1536,
+        "metric": "cosine",
+        "labels": [
+          "Learning Objective","Unit","UnitContentItem","Lesson Content Item",
+          "Assignment","QuizQuestion","NoteContent","VideoClass",
+          "Course","Course Verticals","CourseProject"
+        ],
+        "concat_fields": {
+          "default": ["name1","description"],
+          "Learning Objective": ["name1","description","prerequisites"],
+          "Assignment": ["name1","instructions","note"],
+          "QuizQuestion": ["question","explanation"],
+          "NoteContent": ["title","content"],
+          "VideoClass": ["title","description"]
+        },
+        "chunking": {
+          "max_chars": 1200,
+          "overlap": 120,
+          "min_chars": 200
+        },
+        "where": {
+          "ignore_empty": true
+        }
+      }
+    ]
+  },
+  "exclude_doctypes": [
+    "API Key","OTP Verification","WhatsApp API Settings","Glific Sync Settings",
+    "RabbitMQ Settings","Glific Settings","Glific Field Mapping","Glific Flow",
+    "ImpactMetrics","Issue Tracker","InteractionLog","Route History"
+  ]
+}

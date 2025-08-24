@@ -1,0 +1,33 @@
+{
+  "doctype": "DocType",
+  "name": "AI Query Log",
+  "module": "TAP LMS",
+  "custom": 0,
+  "istable": 0,
+  "editable_grid": 0,
+  "track_seen": 1,
+  "track_changes": 1,
+  "allow_rename": 0,
+  "quick_entry": 0,
+  "title_field": "question",
+  "autoname": "AIQL-.YYYY.-.#####",
+  "fields": [
+    {"fieldname":"question","label":"Question","fieldtype":"Text","reqd":1},
+    {"fieldname":"answer","label":"Answer","fieldtype":"Long Text"},
+    {"fieldname":"engine","label":"Engine","fieldtype":"Select","options":"sql\ngraph\nhybrid\nvector","reqd":1},
+    {"fieldname":"candidate_sql","label":"Candidate SQL","fieldtype":"Long Text"},
+    {"fieldname":"cypher","label":"Cypher","fieldtype":"Long Text"},
+    {"fieldname":"tables","label":"Tables Detected","fieldtype":"JSON"},
+    {"fieldname":"allowlist_ok","label":"Allowlist OK","fieldtype":"Check","default":"0"},
+    {"fieldname":"success","label":"Success","fieldtype":"Check","default":"0"},
+    {"fieldname":"status","label":"Status","fieldtype":"Data"},
+    {"fieldname":"execution_ms","label":"Execution (ms)","fieldtype":"Int"},
+    {"fieldname":"ip","label":"Client IP","fieldtype":"Data"},
+    {"fieldname":"api_key","label":"API Key (redacted)","fieldtype":"Data","hidden":1},
+    {"fieldname":"user","label":"User","fieldtype":"Link","options":"User"}
+  ],
+  "permissions": [
+    {"role":"System Manager","read":1,"write":1,"create":1,"delete":1,"print":1,"email":1,"export":1,"share":1},
+    {"role":"Administrator","read":1,"write":1,"create":1,"delete":1,"print":1,"email":1,"export":1,"share":1}
+  ]
+}

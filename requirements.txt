@@ -6,9 +6,6 @@ pika
 # TAP_LMS Microservice Requirements
 # =============================
 
-# Core Framework
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
 
 # Database (MariaDB / MySQL)
 pymysql>=1.1.1
@@ -43,3 +40,6 @@ tenacity>=9.0.0
 # Testing
 pytest>=8.3.2
 httpx>=0.27.2
+
+#Pinecone
+pinecone

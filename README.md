@@ -84,7 +84,7 @@ The migrator is schema-driven and builds nodes/relationships accordingly (plus v
 bench execute tap_lms.services.pinecone_index.cli_ensure_index
 ```
 
-### 3) Pinecone: ingest vectors (BYO embeddings)
+### 4) Pinecone: ingest vectors (BYO embeddings)
 
 All doctypes (recommended):
 

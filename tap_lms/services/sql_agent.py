@@ -1,211 +1,232 @@
-# File: tap_lms/services/sql_agent.py
-
-import json
-import time
-import logging
-import re
-from typing import Optional, Dict, Any, List, Tuple, Set
+import json as _json
+import time as _time
+import logging as _logging
+import re as _re
+from typing import Optional as _Optional, Dict as _Dict, Any as _Any, List as _List, Tuple as _Tuple, Set as _Set
 
 import frappe
 from langchain.agents.agent_types import AgentType
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI as _ChatOpenAI
 
-from tap_lms.infra.config import get_config
-from tap_lms.infra.db import get_sqldb, get_allowlisted_tables
-from tap_lms.infra.sql_catalog import load_schema
+from tap_lms.infra.config import get_config as _get_config
+from tap_lms.infra.db import get_sqldb as _get_sqldb
+from tap_lms.infra.sql_catalog import load_schema as _load_schema
+from tap_lms.services.doctype_selector import pick_doctypes as _pick_doctypes
 
-logger = logging.getLogger(__name__)
+logger = _logging.getLogger(__name__)
 
-# --------- Load declarative schema (allowlist + columns + joins + guardrails) ----------
-_schema = load_schema()
+# --------- Load declarative schema ----------
+_schema = _load_schema() or {}
+_allowlisted: _List[str] = _schema.get("allowlist", [])
+_tables: _Dict[str, _Dict[str, _Any]] = _schema.get("tables", {})
+_joins: _List[_Dict[str, str]] = _schema.get("allowed_joins", [])
 
-_allowlisted: List[str] = _schema.get("allowlist", [])
-_tables: Dict[str, Dict[str, Any]] = _schema.get("tables", {})
-_joins: List[Dict[str, str]] = _schema.get("allowed_joins", [])
-_guardrails: List[str] = _schema.get("guardrails", [])
+# Build column map and field options
+_table_cols: _Dict[str, _Set[str]] = {}
+_table_field_options: _Dict[str, _Dict[str, _List[str]]] = {}
 
-# Columns map for quick validation
-_table_cols: Dict[str, Set[str]] = {
-    t: set((_tables.get(t) or {}).get("columns", [])) for t in _allowlisted if t in _tables
-}
+for t in _allowlisted:
+    if t in _tables:
+        table_info = _tables[t] or {}
+        columns = set(table_info.get("columns", []))
+        _table_cols[t] = columns
 
-# ---------- Prompt helpers ----------
-def _format_tables_section() -> str:
-    # Show only allowlisted tables with a short description
+        # Extract field options (if any)
+        fields = table_info.get("fields", [])
+        options_map = {}
+        for f in fields:
+            if isinstance(f, dict) and "fieldname" in f:
+                opts = f.get("options")
+                if opts and isinstance(opts, str) and "\n" in opts:
+                    options_map[f["fieldname"]] = [
+                        o.strip() for o in opts.split("\n") if o.strip()
+                    ]
+        if options_map:
+            _table_field_options[t] = options_map
+
+
+def _format_tables_section(only: _Optional[_Set[str]] = None) -> str:
     lines = []
-    for t in _allowlisted:
+    display = [t for t in _allowlisted if (only is None or t in only)]
+    for t in display:
         if t in _tables:
             desc = (_tables[t].get("description") or "").strip()
             cols = ", ".join(sorted(_table_cols.get(t, set())))
-            lines.append(f"- {t}: {desc}\n  Columns: {cols}")
-    return "\n".join(lines)
+            options_info = ""
+            if t in _table_field_options:
+                options_lines = []
+                for col, opts in _table_field_options[t].items():
+                    options_lines.append(f"    - {col}: {', '.join(opts)}")
+                options_info = "\n  Options:\n" + "\n".join(options_lines)
+            lines.append(f"- {t}: {desc}\n  Columns: {cols}{options_info}")
+    return "\n".join(lines) or "- (none)"
 
-def _format_joins_section() -> str:
+
+def _format_joins_section(only_tables: _Optional[_Set[str]] = None) -> str:
     if not _joins:
         return "- (no joins unless explicitly listed)"
     lines = []
     for j in _joins:
+        lt, rt = j["left_table"], j["right_table"]
+        if only_tables and not ({lt, rt} & only_tables):
+            continue
         why = f" ({j.get('why')})" if j.get('why') else ""
-        lines.append(f"- {j['left_table']}.{j['left_key']} = {j['right_table']}.{j['right_key']}{why}")
-    return "\n".join(lines)
+        lines.append(f"- {lt}.{j['left_key']} = {rt}.{j['right_key']}{why}")
+    return "\n".join(lines) or "- (no joins among selected tables)"
 
-SYSTEM_RULES = f"""
+
+def _system_rules_for(only_tables: _Optional[_Set[str]] = None) -> str:
+    return f"""
 You are a SQL agent for TAP LMS on MariaDB.
 
 HARD CONSTRAINTS:
-- Use ONLY these tables: {", ".join(sorted(_allowlisted))}
+- Use ONLY these tables: {', '.join(sorted(only_tables or set(_allowlisted)))}
 - Use ONLY the listed columns for each table (do not invent columns).
-- Primary key is always `name`.
+- For fields with OPTIONS, only use the provided allowed values (case-insensitive).
 - Prefer `name1` for display but JOINs must use `name` as the key.
 - Allowed JOINS (use exactly; do NOT invent other joins):
-{_format_joins_section()}
+{_format_joins_section(only_tables)}
 - Never reference tables or columns outside this schema.
-- If the question needs multiple tables, use only the allowed joins above.
 - Always add LIMIT for non-aggregate queries (default LIMIT 50).
 
 Tables & Columns:
-{_format_tables_section()}
+{_format_tables_section(only_tables)}
 """.strip()
 
-def _get_llm() -> Optional[ChatOpenAI]:
-    api_key = get_config("openai_api_key")
-    model = get_config("primary_llm_model") or "gpt-4o-mini"
+
+def _get_llm() -> _Optional[_ChatOpenAI]:
+    api_key = _get_config("openai_api_key")
+    model = "gpt-3.5-turbo" or _get_config("primary_llm_model") or "gpt-4o-mini"
     if not api_key:
         logger.error("OpenAI API key missing in site_config or env.")
         return None
-    return ChatOpenAI(
-        model_name=model,
-        openai_api_key=api_key,
-        temperature=0.1,
-        max_tokens=1000,
-    )
+    return _ChatOpenAI(model_name=model, openai_api_key=api_key, temperature=0.0, max_tokens=1000)
 
-# ---------- SQL safety helpers ----------
-_SQL_TABLE_RE = re.compile(r"\bfrom\s+([`\"\[]?\w+[`\"\]]?)|\bjoin\s+([`\"\[]?\w+[`\"\]]?)", re.IGNORECASE)
-_SQL_COL_RE = re.compile(r"\b(\w+)\.(\w+)\b")
 
-from typing import Any, Iterable, Optional
+# ---------- SQL helpers ----------
+_SQL_TABLE_RE = _re.compile(r"\b(?:FROM|JOIN)\s+([`\"]?[\w\.]+[`\"]?)", flags=_re.IGNORECASE)
+_SQL_SELECT_LIST_RE = _re.compile(r'(\bSELECT\s+)(.*?)(\s+FROM\s)', flags=_re.IGNORECASE | _re.DOTALL)
+
 
 def _extract_candidate_sql(intermediate_steps) -> str:
-    """
-    Robustly pull the candidate SQL from LangChain agent intermediate steps.
-    Looks for AgentAction.tool == 'sql_db_query' or any SQL-looking string.
-    Returns empty string if not found.
-    """
-    # 1) Preferred path: inspect AgentAction objects
     try:
         for step in intermediate_steps:
-            # step is typically a tuple: (AgentAction, observation)
-            action = None
-            if isinstance(step, (list, tuple)) and step:
-                action = step[0]
-            else:
-                action = step
-
+            action = step[0] if isinstance(step, (list, tuple)) and step else step
             tool = getattr(action, "tool", None)
             tool_input = getattr(action, "tool_input", None)
-
             if tool and "sql" in str(tool).lower():
-                # tool_input can be str or dict depending on LC version
                 if isinstance(tool_input, str) and "select" in tool_input.lower():
-                    sql = tool_input.strip()
-                    if not sql.endswith(";"):
-                        sql += ";"
-                    return sql
+                    return tool_input.strip() if tool_input.strip().endswith(";") else tool_input.strip() + ";"
                 if isinstance(tool_input, dict):
                     for k in ("query", "sql"):
                         v = tool_input.get(k)
                         if isinstance(v, str) and "select" in v.lower():
-                            sql = v.strip()
-                            if not sql.endswith(";"):
-                                sql += ";"
-                            return sql
+                            return v.strip() if v.strip().endswith(";") else v.strip() + ";"
     except Exception:
         pass
-
-    # 2) Fallback: regex search across stringified steps
     try:
         blob = "\n".join([str(s) for s in intermediate_steps])
-        m = re.search(r"(SELECT\b[\s\S]+?;)", blob, flags=re.IGNORECASE)
+        m = _re.search(r"(SELECT\b[\s\S]+?;)", blob, flags=_re.IGNORECASE)
         if m:
             return m.group(1).strip()
     except Exception:
         pass
-
     return ""
 
 
-_SQL_TABLE_RE = re.compile(
-    r"\b(?:FROM|JOIN)\s+([`\"]?[\w\.]+[`\"]?)",
-    flags=re.IGNORECASE
-)
-
-def _tables_in_sql(sql: str) -> List[str]:
-    """Extract table names from a SELECT using basic regex over FROM/JOIN."""
+def _tables_in_sql(sql: str) -> _List[str]:
     if not sql:
         return []
     candidates = _SQL_TABLE_RE.findall(sql)
-    # normalize backticks/quotes
-    cleaned = []
-    for t in candidates:
-        t = t.strip().strip("`").strip('"')
-        # Optional: filter out subqueries aliases etc.; keeping simple here
-        cleaned.append(t)
-    # de-dup preserve order
     seen, out = set(), []
-    for t in cleaned:
-        if t not in seen:
-            seen.add(t)
-            out.append(t)
+    for t in candidates:
+        cleaned = t.strip().strip("`").strip('"')
+        if cleaned not in seen:
+            seen.add(cleaned)
+            out.append(cleaned)
     return out
 
-def _violates_allowlist(sql: str) -> Tuple[bool, str]:
-    """
-    Check referenced tables / columns are within allowlist/columns.
-    Returns (violates, reason).
-    """
+
+def _rewrite_select_to_display_pref(sql: str) -> str:
     if not sql:
-        return (False, "")
-    # Tables
-    found_tables = set()
-    for m in _SQL_TABLE_RE.finditer(sql):
-        tbl = m.group(1) or m.group(2)
-        if not tbl:
-            continue
-        tbl = tbl.strip("`\"[]")
-        found_tables.add(tbl)
+        return sql
 
-    # If any table is not allowlisted -> violation
-    for t in found_tables:
-        if t not in _allowlisted:
-            return (True, f"disallowed table: {t}")
+    m = _SQL_SELECT_LIST_RE.search(sql)
+    if not m:
+        return sql
 
-    # Columns: look for table.column
-    for m in _SQL_COL_RE.finditer(sql):
-        t, c = m.group(1), m.group(2)
-        if t in _allowlisted:
-            if _table_cols.get(t) and c not in _table_cols[t]:
-                # allow commonly generated aliases (e.g., COUNT, alias names), skip if not a real column ref
-                if c.lower() not in {"count", "sum", "avg", "min", "max"}:
-                    return (True, f"disallowed column {t}.{c}")
-    return (False, "")
+    prefix, select_list, suffix = m.group(1), m.group(2), m.group(3)
+    rest = sql[m.end():]
 
-def _wrap_user_question(q: str, default_limit: int = 50) -> str:
-    note = f"[NOTE] Add LIMIT {default_limit} for non-aggregate queries."
-    return f"{SYSTEM_RULES}\n\nUSER QUESTION:\n{q.strip()}\n\n{note}"
+    table_candidates = _tables_in_sql(sql)
+    preferred_columns = {}
+
+    for t in table_candidates:
+        table_info = _tables.get(t) or {}
+        cols = set(table_info.get("columns", []))
+        if "display_name" in cols:
+            preferred_columns[t] = "display_name"
+        elif "name1" in cols:
+            preferred_columns[t] = "name1"
+
+    select_items = [item.strip() for item in select_list.split(",")]
+
+    rewritten_items = []
+    for item in select_items:
+        rewritten_item = item
+        for table, preferred_col in preferred_columns.items():
+            pattern = rf"^\s*({table}\.)?name\s*$"
+            if _re.match(pattern, item, flags=_re.IGNORECASE):
+                rewritten_item = f"{table}.{preferred_col}" if f"{table}." in item else preferred_col
+        rewritten_items.append(rewritten_item)
+
+    new_select = ", ".join(rewritten_items)
+    rewritten = prefix + new_select + suffix + rest
+    if not rewritten.strip().endswith(";"):
+        rewritten += ";"
+    return rewritten
+
+
+def _validate_sql_options(sql: str) -> _Optional[str]:
+    """Return error message if SQL violates field options."""
+    for table, fields_opts in _table_field_options.items():
+        for field, allowed in fields_opts.items():
+            m = _re.findall(rf"{field}\s*=\s*'([^']+)'", sql, flags=_re.IGNORECASE)
+            for found in m:
+                if found not in allowed:
+                    return f"Invalid value '{found}' for field '{field}' in table '{table}'. Allowed: {allowed}"
+    return None
+
+
+def _safe_execute(sql: str):
+    err = _validate_sql_options(sql)
+    if err:
+        return None, err
+    try:
+        return frappe.db.sql(sql, as_dict=True), None
+    except Exception as e:
+        return None, str(e)
+
 
 # ---------- Agent builder ----------
-def build_sql_agent(sample_rows_in_table_info: int = 2):
-    """
-    Build a SQL agent bound to MariaDB using the SAFE allow-list from tap_lms.infra.sql_catalog.
-    """
-    # Use our declarative allow-list (preferred over scanning DB)
-    include_tables = list(_allowlisted)
 
-    # Bind DB with include_tables; if list is empty, fallback to None (exposes all)
-    db = get_sqldb(
+def _tables_for_doctypes(doctypes: _List[str]) -> _Set[str]:
+    want = set()
+    dt_set = set(doctypes or [])
+    for t in _allowlisted:
+        dt = t[3:] if t.startswith("tab") else t
+        if dt in dt_set:
+            want.add(t)
+    return want or set(_allowlisted)
+
+
+def build_sql_agent(sample_rows_in_table_info: int = 2, q: str | None = None):
+    routed: _List[str] = _pick_doctypes(q, top_n=6) if q else []
+    include_tables = list(_tables_for_doctypes(routed))
+
+    db = _get_sqldb(
         include_tables=include_tables if include_tables else None,
         sample_rows_in_table_info=sample_rows_in_table_info,
     )
@@ -214,9 +235,9 @@ def build_sql_agent(sample_rows_in_table_info: int = 2):
     if not llm:
         raise RuntimeError("LLM not available; set openai_api_key in site_config.json")
 
-    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+    sys_rules = _system_rules_for(set(include_tables))
 
-    # Create a robust zero-shot SQL agent (keep intermediate steps so we can sniff its SQL)
+    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
     agent = create_sql_agent(
         llm=llm,
         toolkit=toolkit,
@@ -228,59 +249,56 @@ def build_sql_agent(sample_rows_in_table_info: int = 2):
             "return_intermediate_steps": True,
             "handle_parsing_errors": True,
         },
-        system_message=SYSTEM_RULES,
+        system_message=sys_rules,
     )
     return agent, db, include_tables
 
-# ---------- Public API ----------
-def answer_sql(q: str) -> Dict[str, Any]:
-    t0 = time.time()
-    agent, db, allowlisted = build_sql_agent()
 
-    try:
-        tables = sorted(db.get_usable_table_names())
-        logger.info("SQL agent can see %d tables; sample: %s",
-                    len(tables), ", ".join(tables[:15]))
-    except Exception:
-        tables = []
+# ---------- Public API ----------
+
+def answer_sql(q: str, doctypes: list[str] | None = None) -> dict:
+    t0 = _time.time()
+    agent, db, allowlisted = build_sql_agent(q=q)
 
     result = agent.invoke({"input": q})
-
-    # Extract the raw answer
-    answer = result.get("output", str(result)).strip()
-
-    # Pull intermediate SQL if available
+    answer = result.get("output", "").strip()
     intermediate = result.get("intermediate_steps", [])
     candidate_sql = _extract_candidate_sql(intermediate)
+
+    rewritten_sql = _rewrite_select_to_display_pref(candidate_sql) if candidate_sql else None
+
+    rows, err = (None, None)
+    if rewritten_sql:
+        rows, err = _safe_execute(rewritten_sql)
+
+    if rows is not None and not err:
+        answer = _json.dumps(rows, ensure_ascii=False, default=str)
 
     return {
         "question": q,
         "answer": answer,
-        "success": True,
+        "success": rows is not None and not err,
         "engine": "sql",
-        "execution_time": time.time() - t0,
+        "execution_time": _time.time() - t0,
         "metadata": {
-            "visible_tables": len(allowlisted),
             "candidate_sql": candidate_sql,
+            
+            "rewritten_sql": rewritten_sql,
+            "doctypes_routed": doctypes if doctypes else _pick_doctypes(q, top_n=6),
+            "rows_returned": len(rows) if rows else 0,
+            "execution_error": err,
+
         },
     }
 
-def explain_sql(q: str) -> Dict[str, Any]:
-    """
-    Build agent, ask for a plan, extract the candidate SQL without executing it.
-    Returns SQL text + detected tables + allowlist check.
-    """
-    t0 = time.time()
-    agent, db, allowlisted = build_sql_agent()
 
-    # Invoke once; we will parse the candidate SQL from intermediate steps.
-    # We do NOT run db.run() here.
+def explain_sql(q: str, doctypes: list[str] | None = None) -> _Dict[str, _Any]:
+    t0 = _time.time()
+    agent, db, allowlisted = build_sql_agent(q=q)
     result = agent.invoke({"input": q})
     intermediate = result.get("intermediate_steps", []) if isinstance(result, dict) else []
-
     sql = _extract_candidate_sql(intermediate)
     tables = _tables_in_sql(sql)
-    # allowlist presence check
     allowlist_set = set(allowlisted or [])
     used_not_allowed = [t for t in tables if t not in allowlist_set]
 
@@ -288,21 +306,20 @@ def explain_sql(q: str) -> Dict[str, Any]:
         "question": q,
         "engine": "sql",
         "success": bool(sql),
-        "execution_time": time.time() - t0,
+        "execution_time": _time.time() - t0,
         "candidate_sql": sql,
         "tables_detected": tables,
         "allowlist_ok": len(used_not_allowed) == 0,
         "not_in_allowlist": used_not_allowed,
+        "doctypes_routed": doctypes if doctypes else _pick_doctypes(q, top_n=6),
     }
 
 
-
 # ---------- Bench CLI ----------
+
 def cli(q: str):
-    """
-    Bench command:
-      bench execute tap_lms.services.sql_agent.cli --kwargs "{'q':'how many students in grade 9'}"
-    """
-    out = explain_sql(q)
-    print(json.dumps(out, indent=2))
+    '''  bench execute tap_lms.services.sql_agent.cli --kwargs "{'q':'total number of student distribution by schools'}"
+    '''
+    out = answer_sql(q)
+    print(_json.dumps(out, indent=2, ensure_ascii=False))
     return out

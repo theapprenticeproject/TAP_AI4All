@@ -196,7 +196,7 @@ class LMSNeo4jMigrator:
                 rows = frappe.get_all(doctype, fields="*", start=offset, page_length=bs)
                 with self._driver.session(database=self.neo_db) as s:
                     for row in rows:
-                        props = self._prepare_node_props(row)
+                        props = self._prepare_node_props(row, doctype)
                         if not props:
                             continue
                         s.run(f"MERGE (n:{label} {{name:$name}}) SET n += $props",
@@ -290,24 +290,20 @@ class LMSNeo4jMigrator:
         return self._safe_rel(base)
 
 
-    def _prepare_node_props(self, row: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Copy scalar values; map name1 -> display_name; add _doctype for traceability.
-        """
+    def _prepare_node_props(self, row: Dict[str, Any], doctype: str | None = None) -> Dict[str, Any]:
         if "name" not in row:
             return {}
-        props: Dict[str, Any] = {"name": row["name"], "_doctype": row.get("doctype") or ""}
-        # Map common aliases
+        props: Dict[str, Any] = {
+            "name": row["name"],
+            "_doctype": (doctype or "").strip()      
+        }
         if "name1" in row and row["name1"]:
             props["display_name"] = str(row["name1"]).strip()
-
         for k, v in row.items():
             if v in (None, "", "None"):
                 continue
-            if isinstance(v, (str, int, float, bool)):
-                # don't overwrite name/display_name
-                if k not in ("name", "display_name"):
-                    props[k] = v if not isinstance(v, str) else v.strip()
+            if isinstance(v, (str, int, float, bool)) and k not in ("name", "display_name"):
+                props[k] = v if not isinstance(v, str) else v.strip()
         return props
 
     def _compose_text_from_props(self, props: Dict[str, Any]) -> str:
@@ -393,6 +389,9 @@ def run_all(clear_db: bool = False) -> dict:
       3) relationships
       4) embeddings
       5) vector indexes
+
+      bench execute tap_lms.infra.neo4j_migrator.run_all --kwargs "{'clear_db': True}"
+
     """
     m = LMSNeo4jMigrator()
     t0 = _now_ms()

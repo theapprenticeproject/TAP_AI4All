@@ -1,13 +1,16 @@
 # tap_lms/api/query.py
 import frappe
-from tap_lms.services.sql_agent import answer_sql
+from tap_lms.services.router import answer as route_query
 from tap_lms.services.ratelimit import check_rate_limit
-from tap_lms.services.metrics import log_query_event, now_ms
+from tap_lms.infra.ai_logging import log_query_event, now_ms
 
 
-@frappe.whitelist(methods=["GET"], allow_guest=False)
-def query(q: str, engine: str = "sql", limit: int = 50):
-    """Public API: routed Q&A. Auth required (API key/secret or session)."""
+@frappe.whitelist(methods=["GET", "POST"], allow_guest=False)
+def query(q: str = None, limit: int = 50):
+    """
+    Public API: Unified Router (Graph → SQL → Pinecone fallback).
+    Supports both GET and POST.
+    """
     auth = frappe.get_request_header("Authorization") or ""
     api_key = None
     if auth.lower().startswith("token "):
@@ -15,55 +18,37 @@ def query(q: str, engine: str = "sql", limit: int = 50):
             api_key = auth.split()[1].split(":")[0]
         except Exception:
             api_key = None
-    
-    ok, remaining, reset = check_rate_limit(api_key, scope="sql_query", limit=60, window_sec=60)
+
+    ok, remaining, reset = check_rate_limit(api_key, scope="router_query", limit=60, window_sec=60)
     if not ok:
-        frappe.throw(f"Rate limit exceeded. Try again after {reset}. Remaining: {remaining}", frappe.TooManyRequestsError)
+        frappe.throw(
+            f"Rate limit exceeded. Try again after {reset}. Remaining: {remaining}",
+            frappe.TooManyRequestsError,
+        )
+
+    # If it's a POST and q is not passed as arg, try extracting from JSON body
+    if not q and frappe.request and frappe.request.method == "POST":
+        data = frappe.local.form_dict or {}
+        q = data.get("q")
 
     if not q:
         frappe.throw("Missing required param: q")
-    if engine != "sql":
-        frappe.throw("Only 'sql' engine is enabled on this endpoint")
 
-    out = answer_sql(q)
-    # Optional: respect limit if your agent supports it
-    return out  # Frappe will JSON-serialize dicts
-
-@frappe.whitelist(allow_guest=False, methods=["GET"])
-def explain(q: str):
-    """
-    Explain what SQL the agent intends to run (no execution).
-    Usage:
-      curl -s -G "http://localhost:8000/api/method/tap_lms.api.query.explain" \
-        -H "Authorization: token KEY:SECRET" \
-        --data-urlencode "q=list students in grade 9 with school"
-    """
-    auth = frappe.get_request_header("Authorization") or ""
-    api_key = None
-    if auth.lower().startswith("token "):
-        try:
-            api_key = auth.split()[1].split(":")[0]
-        except Exception:
-            api_key = None
-    
-    ok, remaining, reset = check_rate_limit(api_key, scope="sql_query", limit=60, window_sec=60)
-    if not ok:
-        frappe.throw(f"Rate limit exceeded. Try again after {reset}. Remaining: 0", frappe.TooManyRequestsError)
-    from tap_lms.services.sql_agent import explain_sql
     t0 = now_ms()
-    out = explain_sql(q)
-    log_query_event({
-    "question": q,
-    "engine": "sql",
-    "success": True,
-    "execution_ms": now_ms() - t0,
-    "candidate_sql": out.get("candidate_sql"),      
-    "tables": out.get("tables_detected"),
-    "allowlist_ok": out.get("allowlist_ok"),
-    "user": frappe.session.user if frappe.session else "guest",
-    "api_key": api_key,                  
-    "ip": frappe.local.request_ip if hasattr(frappe.local, "request_ip") else None,
-    "status": "ok",
-})
-    return out
-
+    out = {}
+    success = False
+    try:
+        out = route_query(q)  # Graph → SQL → Pinecone
+        success = out.get("success", True)
+        return out
+    finally:
+        log_query_event({
+            "question": q,
+            "engine": out.get("engine") if out else "router",
+            "success": 1 if success else 0,
+            "execution_ms": now_ms() - t0,
+            "api_key": api_key,
+            "response_preview": str(out)[:300] if out else "error",
+            "answer": out.get("answer") if out else "error",
+            "metadata": out.get("metadata") if out else {},
+        })

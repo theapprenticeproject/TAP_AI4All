@@ -1,5 +1,9 @@
 # tap_lms/infra/ai_logging.py
 import json, frappe
+import time
+
+def now_ms() -> int:
+    return int(time.time() * 1000)
 
 SAFE_PREVIEW_LEN = 500
 
@@ -24,7 +28,7 @@ def log_query_event(payload: dict):
     if isinstance(meta, dict):
         meta = json.dumps(meta)
 
-    preview = (payload.get("response_preview") or "")[:SAFE_PREVIEW_LEN]
+    preview = (payload.get("answer") or "")[:SAFE_PREVIEW_LEN]
 
     doc = frappe.get_doc({
         "doctype": "AI Query Log",

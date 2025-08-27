@@ -13,7 +13,7 @@ A single REST endpoint exposes the router so external systems (e.g., Griffin web
 - If Neo4j is enabled, route to Graph RAG; on failure, fallback to Pinecone.
 - If Neo4j is disabled, route to SQL Agent; on failure, fallback to Pinecone.
 
-Your public API wires into this router and supports GET & POST (Frappe whitelisted), and logs each call with `log_query_event`.
+ The public API wires into this router and supports GET & POST (Frappe whitelisted), and logs each call with `log_query_event`.
 
 ## 📦 Installation
 

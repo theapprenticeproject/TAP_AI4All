@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def _try_import_frappe():
     try:
-        import frappe  # type: ignore
+        import frappe  
         return frappe
     except Exception:
         return None
@@ -48,7 +48,7 @@ class TAPConfig:
         frappe = _try_import_frappe()
         site_config = _read_site_config_from_frappe(frappe) if frappe else {}
 
-        # 2) If Frappe not available (microservice), try filesystem (optional)
+        # 2) If Frappe not available try filesystem (optional)
         if not site_config and os.getenv("USE_FRAPPE_SITE_CONFIG", "false").lower() == "true":
             site_config = _read_site_config_from_path()
 
@@ -68,6 +68,9 @@ class TAPConfig:
             "neo4j_database": "neo4j",
             "aura_instance_id": "",
             "aura_instance_name": "",
+            
+            # Pinecone
+            "pinecone_api_key": "",
 
             # Redis (optional for microservice)
             "redis_url": "redis://127.0.0.1:6379",

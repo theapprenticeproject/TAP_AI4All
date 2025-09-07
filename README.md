@@ -15,6 +15,8 @@ A single REST endpoint exposes the router so external systems (e.g., Griffin web
 
  The public API wires into this router and supports GET & POST (Frappe whitelisted), and logs each call with `log_query_event`.
 
+ <img width="3840" height="3328" alt="Mermaid Chart - Create complex, visual diagrams with text  A smarter way of creating diagrams -2025-08-26-223925" src="https://github.com/user-attachments/assets/7ccdd979-6cdf-4c72-b650-0cfdb27a541b" />
+
 ## 📦 Installation
 
 Ensure TAP LMS is installed on your site:

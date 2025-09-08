@@ -148,7 +148,7 @@ curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
 
 **`tap_lms/api/query.py`**: The production-ready REST API endpoint. It handles requests, manages authentication and rate limiting, and orchestrates the conversational flow by managing user-specific chat history in the cache.
 
-**`tap_lms/services/router.py`**: The central brain of the system. It takes a user's query and chat history, uses an LLM to choose the best tool (text_to_sql or vector_search), and manages the fallback logic.
+**`tap_lms/services/router.py`**: The central brain of the system. It takes a user's query and chat history, uses an LLM to choose the best tool (`text_to_sql` or `vector_search`), and manages the fallback logic.
 
 **`tap_lms/services/sql_answerer.py`**: The Text-to-SQL engine. It uses an intelligent schema builder to give an LLM rich context about the database, enabling it to generate accurate SQL queries for factual questions.
 
@@ -156,4 +156,14 @@ curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
 
 **`tap_lms/services/pinecone_store.py`**: Manages all interactions with the Pinecone vector database, including the data upsert pipeline and the search logic.
 
-**`tap_lms/schema/generate_schema.py`**: A utility script to generate a detailed JSON representation of the Frappe DocTypes, which is used by both the SQL and RAG engines.
+**`tap_lms/services/pinecone_index.py`**: Manages the Pinecone index lifecycle, including creation and deletion, via command-line functions.
+
+**`tap_lms/services/doctype_selector.py`**: A crucial pre-processing step that uses an LLM to intelligently select the most relevant DocTypes for a given query, narrowing the search space for the RAG engine.
+
+**`tap_lms/services/ratelimit.py`**: A utility for enforcing rate limits on API usage, using the Frappe cache to track requests.
+
+**`tap_lms/schema/generate_schema.py`**: A utility script to generate a detailed JSON representation of your Frappe DocTypes, which is used by both the SQL and RAG engines.
+
+**`tap_lms/infra/config.py`**: A centralized helper for retrieving configuration settings (like API keys) from `site_config.json`.
+
+**`tap_lms/infra/sql_catalog.py`**: A simple loader for the `tap_lms_schema.json` file, making it accessible across different services.

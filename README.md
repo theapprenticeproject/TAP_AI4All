@@ -66,6 +66,87 @@ graph TD
     RAG -- "Returns Rich Context" --> LLMSynthesis
     LLMSynthesis --> FinalAnswer
 ```
+## Engine Robustness
+
+The robustness of the system comes from the specialized design of each engine. The following diagrams illustrate their internal workflows.
+
+### Text-to-SQL Engine: From Query to Structured Data
+
+This engine excels at factual queries because it builds an "intelligent schema" before prompting the LLM, ensuring the generated SQL is highly accurate.
+
+```mermaid
+graph TD
+    subgraph "Input"
+        A[User Query]
+    end
+
+    subgraph "Intelligent Schema Builder (sql_answerer.py)"
+        B["1. Inspect Live Frappe Metadata"]
+        B1["- Identify 'Select' fields & their Options (e.g., 'Basic', 'Intermediate')"]
+        B2["- Identify 'Link' & 'Table' fields to understand relationships"]
+        B3["- Read `allowed_joins` from schema.json"]
+        B --> B1 & B2 & B3
+        C["2. Create Rich Schema Prompt for LLM"]
+        B1 & B2 & B3 --> C
+    end
+
+    subgraph "SQL Generation"
+        D{LLM: Generate SQL}
+        C --> D
+    end
+
+    subgraph "Execution"
+        E[MariaDB]
+        D -- "SELECT ... WHERE ... JOIN ..." --> E
+    end
+    
+    subgraph "Output"
+        F[Structured Data Rows]
+        E --> F
+    end
+
+    A --> B
+```
+
+### Vector RAG Engine: From Query to Rich Context
+
+This engine excels at conceptual and conversational queries by refining the user's intent and retrieving semantically relevant, unstructured text.
+
+```mermaid
+graph TD
+    subgraph "Input"
+        A[User Query + Chat History]
+    end
+
+    subgraph "Conversational Refiner (rag_answerer.py)"
+        B{LLM: Refine Query with History}
+        C["Creates a standalone query<br><i>e.g., 'summarize the first one' -> 'summarize Video XYZ'</i>"]
+        B --> C
+    end
+
+    subgraph "Retrieval Pipeline"
+        D["1. Select DocTypes<br>(doctype_selector.py)"]
+        E["2. Semantic Search<br>(pinecone_store.py)"]
+        F["3. Two-Step Fetch<br>Get full text from MariaDB"]
+        D --> E --> F
+    end
+
+    subgraph "Dependencies"
+        Pinecone[(Pinecone Vector DB)]
+        MariaDB[(Frappe MariaDB)]
+        E --> Pinecone
+        F --> MariaDB
+    end
+
+    subgraph "Output"
+        G[Rich Context Text Chunks]
+        F --> G
+    end
+
+    A --> B
+    C --> D
+```
+
 
 ## 📦 Installation
 

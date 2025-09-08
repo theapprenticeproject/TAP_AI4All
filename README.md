@@ -66,7 +66,7 @@ graph TD
     RAG -- "Returns Rich Context" --> LLMSynthesis
     LLMSynthesis --> FinalAnswer
 ```
-## Engine Robustness
+## ⚙️ Engine Robustness
 
 The robustness of the system comes from the specialized design of each engine. The following diagrams illustrate their internal workflows.
 

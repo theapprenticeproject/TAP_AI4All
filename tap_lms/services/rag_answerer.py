@@ -10,91 +10,154 @@ from langchain_openai import ChatOpenAI
 
 from tap_lms.infra.config import get_config
 from tap_lms.services.pinecone_store import (
-    search_auto_namespaces,          # LLM routes query -> DocTypes (namespaces)
-    get_safe_select_columns,         # auto-pick real DB columns (no hardcoding)
+    search_auto_namespaces,
+    get_db_columns_for_doctype,
 )
 
-# --- tiny, general record->text (mirrors pinecone_store’s shape)
+# --- A local version of the text formatter is needed here ---
+def _to_plain(v: Any) -> str:
+    """Make values JSON-safe for text conversion."""
+    if v is None: return ""
+    if isinstance(v, (str, int, float, bool)): return str(v)
+    if hasattr(v, 'isoformat'): return v.isoformat()
+    return str(v)
+
 def _record_to_text(doctype: str, row: Dict[str, Any]) -> str:
-    parts = [f"DocType: {doctype}", f"ID: {row.get('name','')}"]
+    """
+    Flattens a record to a text block, giving weight to the title field.
+    """
+    parts = []
+    meta = frappe.get_meta(doctype)
+    
+    title_field = None
+    title_value = None
+
+    official_title_field = meta.title_field
+    if official_title_field and official_title_field in row and row[official_title_field]:
+        title_field = official_title_field
+        title_value = row[title_field]
+    else:
+        fallback_fields = [
+            'title', 'name1', 'video_name', 'assignment_name', 'project_name', 
+            'quiz_name', 'objective_name', 'unit_name', 'comp_name', 'note_name'
+        ]
+        for field in fallback_fields:
+            if field in row and row[field]:
+                title_field = field
+                title_value = row[field]
+                break
+
+    if title_field and title_value:
+        title_label = meta.get_field(title_field).label or title_field.replace("_", " ").title()
+        parts.append(f"{title_label}: {title_value}")
+
+    parts.append(f"DocType: {doctype}")
+    parts.append(f"ID: {row.get('name','')}")
+    
     for k, v in row.items():
-        if k == "name": 
+        if k in ('name', title_field) or v in (None, ""):
             continue
-        if v is None or v == "":
-            continue
-        # make JSON-serializable-ish for display
-        if hasattr(v, "isoformat"):
-            v = v.isoformat()
-        parts.append(f"{k}: {v}")
+        parts.append(f"{k}: {_to_plain(v)}")
+        
     return "\n".join(parts)
 
-def _get_llm() -> ChatOpenAI:
-    api_key = get_config("openai_api_key")
-    model = get_config("primary_llm_model") or "gpt-4o-mini"
-    if not api_key:
-        raise RuntimeError("Missing openai_api_key in site_config.json")
-    return ChatOpenAI(model_name=model, openai_api_key=api_key, temperature=0.2, max_tokens=800)
 
-def _build_context_from_hits(hits: List[Dict[str, Any]], max_chars: int = 9000) -> Dict[str, Any]:
+def _get_llm(model: str = "gpt-4o-mini", temperature: float = 0.2) -> ChatOpenAI:
+    api_key = get_config("openai_api_key")
+    if not api_key: raise RuntimeError("Missing openai_api_key")
+    return ChatOpenAI(model_name=model, openai_api_key=api_key, temperature=temperature, max_tokens=1500)
+
+def _build_context_from_hits(hits: List[Dict[str, Any]], max_chars: int = 12000) -> Dict[str, Any]:
     """
-    Turn Pinecone hits into a single context string by fetching rows (no hardcoding).
-    We respect max_chars to stay token-safe.
+    Builds context by fetching full records from Frappe DB based on Pinecone hit metadata.
+    This is the robust "two-step fetch" method.
     """
     context_chunks: List[str] = []
     sources: List[Dict[str, Any]] = []
-    used = 0
+    used_chars = 0
+    
+    # This import is now needed here
+    from tap_lms.services.pinecone_store import _record_to_text, get_db_columns_for_doctype
 
     for h in hits:
         meta = h.get("metadata") or {}
-        doctype = meta.get("doctype") or h.get("namespace")
-        record_ids = meta.get("record_ids") or []
-        if not doctype or not record_ids:
-            continue
+        doctype = meta.get("doctype")
+        record_ids = meta.get("record_ids", [])
+        
+        if not doctype or not record_ids: continue
 
-        # Pick columns that truly exist in SQL (skips Table/Section Break/etc.)
-        fields = get_safe_select_columns(doctype)
-        rows = frappe.db.get_all(doctype, filters={"name": ["in", record_ids]}, fields=fields) or []
+        try:
+            fields = get_db_columns_for_doctype(doctype)
+            rows = frappe.get_all(doctype, filters={"name": ("in", record_ids)}, fields=fields) or []
+            
+            for row in rows:
+                text_chunk = _record_to_text(doctype, row)
+                if used_chars + len(text_chunk) > max_chars:
+                    break
+                
+                context_chunks.append(text_chunk)
+                sources.append({"doctype": doctype, "id": row.get("name"), "score": h.get("score")})
+                used_chars += len(text_chunk)
+        
+        except Exception as e:
+            frappe.log_error(f"Failed to fetch records for context building: {e}")
 
-        for r in rows:
-            block = _record_to_text(doctype, r)
-            if used + len(block) + 2 > max_chars:
-                break
-            context_chunks.append(block)
-            sources.append({"doctype": doctype, "id": r.get("name")})
-            used += len(block) + 2
+        if used_chars >= max_chars: break
+            
+    return {"context_text": "\n\n---\n\n".join(context_chunks), "sources": sources}
 
-        if used >= max_chars:
-            break
+# --- Contextual Query Refiner ---
 
-    context_text = "\n\n---\n\n".join(context_chunks)
-    return {"context_text": context_text, "sources": sources}
+REFINER_PROMPT = """Given a chat history and a follow-up question, rewrite the follow-up question to be a standalone question that a search engine can understand, incorporating the necessary context from the history.
+
+Return ONLY the refined, standalone question. Do not answer the question.
+"""
+
+def _refine_query_with_history(query: str, chat_history: List[Dict[str, str]]) -> str:
+    """Uses an LLM to make a follow-up question self-contained."""
+    if not chat_history:
+        return query
+
+    llm = _get_llm(temperature=0.0) # Use zero temperature for predictable refinement
+    history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in chat_history])
+    prompt = (
+        f"CHAT HISTORY:\n{history_str}\n\n"
+        f"FOLLOW-UP QUESTION:\n{query}\n\n"
+        f"REFINED STANDALONE QUESTION:"
+    )
+    
+    try:
+        resp = llm.invoke([("system", REFINER_PROMPT), ("user", prompt)])
+        refined_query = getattr(resp, "content", query).strip()
+        print(f"> Refined Query for Search: {refined_query}")
+        return refined_query
+    except Exception as e:
+        frappe.log_error(f"Query refinement failed: {e}")
+        return query
+
+# --- Main Answer Function ---
 
 def answer_from_pinecone(
     q: str,
     k: int = 8,
-    doctypes: list[str] | None = None,
     route_top_n: int = 4,
-    max_context_chars: int = 9000,
+    chat_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
-    """
-    General RAG answerer:
-      1) Route to DocTypes with your schema-aware LLM router
-      2) Pinecone vector search (BYO embeddings) within those namespaces
-      3) Pull the matching rows from MariaDB and render neutral chunks
-      4) Ask the LLM to synthesize an answer grounded ONLY in those chunks
-    """
     t0 = time.time()
+    chat_history = chat_history or []
 
-    # 1+2) Route & search (namespaces == DocTypes)
-    routed = search_auto_namespaces(q=q, k=k, route_top_n=route_top_n, include_metadata=True)
+    # 1. Refine the query with history before searching
+    refined_query = _refine_query_with_history(q, chat_history)
+
+    # 2. Route & search using the refined query (NO METADATA FILTERS)
+    routed = search_auto_namespaces(q=refined_query, k=k, route_top_n=route_top_n)
     matches = routed.get("matches") or []
 
-    # 3) Build neutral text context from DB (no per-DocType hardcoding)
-    ctx = _build_context_from_hits(matches, max_chars=max_context_chars)
+    # 3. Build context from DB hits (two-step fetch)
+    ctx = _build_context_from_hits(matches)
     context_text = ctx["context_text"]
     sources = ctx["sources"]
 
-    # If no context, return graceful fallback
     if not context_text.strip():
         return {
             "question": q,
@@ -102,32 +165,29 @@ def answer_from_pinecone(
             "success": True,
             "engine": "rag-pinecone",
             "execution_time": time.time() - t0,
-            "metadata": {
-                "routed_doctypes": routed.get("routed_doctypes"),
-                "matches_preview": [
-                    {"id": m.get("id"), "score": m.get("score"), "namespace": m.get("namespace")}
-                    for m in matches[:5]
-                ],
-                "records_loaded": 0,
-            },
+            "metadata": {"refined_query_for_search": refined_query, "routed_doctypes": routed.get("routed_doctypes"), "sources": []}
         }
 
-    # 4) LLM synthesis — generic instruction, grounded, no tool-specific priors
+    # 4. LLM synthesis with chat history and ORIGINAL question
     llm = _get_llm()
-    system = (
-        "You are a helpful assistant that answers strictly based on the given context. "
-        "If the context is insufficient, say you don't know. Be concise, and cite items by DocType and ID where helpful."
+    system_prompt = (
+        "You are a helpful assistant. Answer the user's final question using ONLY the provided CONTEXT and CHAT HISTORY. "
+        "If the context is insufficient, say you don't know. Be concise."
     )
-    user = (
-        f"Question:\n{q}\n\n"
-        f"Context (multiple independent records, each starts with 'DocType:' and 'ID:'):\n\n"
-        f"{context_text}\n\n"
-        f"Instructions:\n"
-        f"- Use only the information in the context to answer.\n"
-        f"- If you cannot find enough evidence, respond with: \"I don't know based on the provided context.\"\n"
-    )
-    resp = llm.invoke([{"role": "system", "content": system}, {"role": "user", "content": user}])
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(chat_history)
+    messages.append({
+        "role": "user",
+        "content": f"CONTEXT:\n{context_text}\n\nBased on the context, answer this question:\n{q}"
+    })
+
+    resp = llm.invoke(messages)
     answer = getattr(resp, "content", None) or str(resp)
+
+    # Final currency symbol fix on the answer string
+    if isinstance(answer, str):
+        answer = answer.replace('\\u20b9', '₹')
 
     out = {
         "question": q,
@@ -136,27 +196,20 @@ def answer_from_pinecone(
         "engine": "rag-pinecone",
         "execution_time": time.time() - t0,
         "metadata": {
+            "refined_query_for_search": refined_query,
             "routed_doctypes": routed.get("routed_doctypes"),
-            "matches": [
-                {
-                    "id": m.get("id"),
-                    "score": m.get("score"),
-                    "namespace": m.get("namespace"),
-                    "doctype": (m.get("metadata") or {}).get("doctype") or m.get("namespace"),
-                    "count": (m.get("metadata") or {}).get("count"),
-                }
-                for m in matches
-            ],
-            "records_loaded": len(sources),
+            "sources": sources
         },
     }
-    print(json.dumps(out, indent=2, ensure_ascii=False))
     return out
+
 
 # -------- Bench CLI --------
 def cli(q: str, k: int = 8, route_top_n: int = 4):
     """
-    Bench:
-      bench execute tap_lms.services.rag_answerer.cli --kwargs "{'q':'recommend activities for 9th graders','k':8,'route_top_n':4}"
+    Bench command to test the RAG pipeline.
+
+    bench execute tap_lms.services.rag_answerer.cli --kwargs "{'q':'Find a video about financial literacy and goal setting and summarize its key points'}"
+    bench execute tap_lms.services.rag_answerer.cli --kwargs "{'q':'Can you provide a summary of the video titled Needs First, Wants Later (2024)'}"
     """
     return answer_from_pinecone(q=q, k=k, route_top_n=route_top_n)

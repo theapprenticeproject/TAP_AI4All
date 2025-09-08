@@ -20,16 +20,16 @@ The system's intelligence lies in its central router, which acts as a decision-m
 
 ## 📦 Installation
 
-Ensure TAP LMS is installed on your site:
+Ensure TAP LMS is installed on the site:
 
 ```bash
-bench get-app tap_lms <your-repo-url>
-bench --site <yoursite> install-app tap_lms
+bench get-app tap_lms <repo-url>
+bench --site <site-name> install-app tap_lms
 ```
 
-Add the code for this AI engine to your tap_lms app directory.
+Add the code for this AI engine to the tap_lms app directory.
 
-Finally, install the required Python libraries into your bench's virtual environment:
+Finally, install the required Python libraries into the bench's virtual environment:
 
 ```bash
 bench pip install langchain-openai pinecone-client frappe-client
@@ -37,7 +37,7 @@ bench pip install langchain-openai pinecone-client frappe-client
 
 ## ⚙️ Configuration
 
-Add the following keys to your site's `common_site_config.json`:
+Add the following keys to the site's `site_config.json`:
 
 ```json
 {
@@ -56,16 +56,16 @@ Follow these steps in order to initialize the system.
 
 ### 1) Generate the Database Schema
 
-This script inspects your Frappe DocTypes and creates a `tap_lms_schema.json` file. This schema is crucial for both the Text-to-SQL and Vector RAG engines.
+This script inspects the Frappe DocTypes and creates a `tap_lms_schema.json` file. This schema is crucial for both the Text-to-SQL and Vector RAG engines.
 
 ```bash
-# Run this from your app's root directory
+# Run this from app's root directory
 python3 -m tap_lms.schema.generate_schema
 ```
 
 ### 2) Create the Pinecone Index
 
-This command prepares your Pinecone account by creating the vector index where your document embeddings will be stored.
+This command prepares Pinecone account by creating the vector index where document embeddings will be stored.
 
 ```bash
 bench execute tap_lms.services.pinecone_index.cli_ensure_index
@@ -73,7 +73,7 @@ bench execute tap_lms.services.pinecone_index.cli_ensure_index
 
 ### 3) Populate the Pinecone Index (Upsert Data)
 
-This command reads your schema, processes the data from your allow-listed DocTypes, creates embeddings, and saves them to Pinecone.
+This command reads schema, processes the data from allow-listed DocTypes, creates embeddings, and saves them to Pinecone.
 
 ```bash
 bench execute tap_lms.services.pinecone_store.cli_upsert_all
@@ -132,7 +132,7 @@ The API accepts a JSON body. The `user_id` is critical for maintaining separate 
 
 ### Example curl Command
 
-This is how an external service (like your GCP webhook for WhatsApp) would call the API.
+This is how an external service (like GCP webhook for WhatsApp) would call the API.
 
 ```bash
 curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
@@ -156,4 +156,4 @@ curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
 
 **`tap_lms/services/pinecone_store.py`**: Manages all interactions with the Pinecone vector database, including the data upsert pipeline and the search logic.
 
-**`tap_lms/schema/generate_schema.py`**: A utility script to generate a detailed JSON representation of your Frappe DocTypes, which is used by both the SQL and RAG engines.
+**`tap_lms/schema/generate_schema.py`**: A utility script to generate a detailed JSON representation of the Frappe DocTypes, which is used by both the SQL and RAG engines.

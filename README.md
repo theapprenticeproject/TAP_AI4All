@@ -8,15 +8,64 @@ The system is designed for multi-turn conversations, automatically managing chat
 
 The system's intelligence lies in its central router, which acts as a decision-making brain. When a query is received, it follows this flow:
 
-**Intelligent Routing**: An LLM analyzes the user's query to determine its intent.
+1. **Intelligent Routing:** An LLM analyzes the user's query to determine its intent.
+2. **Tool Selection:**
+   - For factual, specific questions (e.g., "list all...", "how many..."), it selects the **Text-to-SQL Engine**.
+   - For conceptual, open-ended, or summarization questions (e.g., "summarize...", "explain..."), it selects the **Vector RAG Engine**.
+3. **Execution & Fallback:** The chosen engine executes the query. If it fails to produce a satisfactory answer, the system automatically falls back to the Vector RAG engine as a safety net.
+4. **Answer Synthesis:** The retrieved data is passed to an LLM, which generates a final, human-readable answer.
 
-**Tool Selection**:
-- For factual, specific questions (e.g., "list all...", "how many..."), it selects the Text-to-SQL Engine.
-- For conceptual, open-ended, or summarization questions (e.g., "summarize...", "explain..."), it selects the Vector RAG Engine.
+```mermaid
+graph TD
+    subgraph "User Input"
+        User[User Query]
+    end
 
-**Execution & Fallback**: The chosen engine executes the query. If it fails to produce a satisfactory answer, the system automatically falls back to the Vector RAG engine as a safety net.
+    subgraph "Orchestration Layer"
+        Router["services/router.py<br><b>Intelligent Router</b>"]
+    end
 
-**Answer Synthesis**: The retrieved data is passed to an LLM, which generates a final, human-readable answer.
+    subgraph "Decision Engine"
+        ChooseTool{LLM: Choose Tool}
+    end
+
+    subgraph "Execution Engines"
+        SQL["services/sql_answerer.py<br><b>Text-to-SQL Engine</b>"]
+        RAG["services/rag_answerer.py<br><b>Vector RAG Engine</b>"]
+    end
+
+    subgraph "Data Sources & Dependencies"
+        MariaDB[(Frappe MariaDB)]
+        PineconeDB[(Pinecone Vector DB)]
+        DocSelector["services/doctype_selector.py"]
+    end
+
+    subgraph "Final Output"
+        LLMSynthesis["LLM: Synthesize Final Answer"]
+        FinalAnswer[User-Facing Answer]
+    end
+
+    %% Main Flow
+    User --> Router
+    Router --> ChooseTool
+
+    %% Tool Selection Paths
+    ChooseTool -- "Factual/Specific Query" --> SQL
+    ChooseTool -- "Conceptual/Vague Query" --> RAG
+
+    %% Engine Dependencies
+    SQL -- "Generates & Runs SQL" --> MariaDB
+    RAG -- "Selects Relevant DocTypes" --> DocSelector
+    RAG -- "Performs Vector Search" --> PineconeDB
+
+    %% Fallback Logic
+    SQL -- "Fallback on Failure" --> RAG
+
+    %% Answer Synthesis
+    SQL -- "Returns Raw Data" --> LLMSynthesis
+    RAG -- "Returns Rich Context" --> LLMSynthesis
+    LLMSynthesis --> FinalAnswer
+```
 
 ## 📦 Installation
 

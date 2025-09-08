@@ -1,41 +1,43 @@
-# TAP LMS – RAG Microservice Extension
+# TAP LMS - Conversational AI Engine
 
-This extension adds a microservice-style API layer on top of TAP LMS (Frappe app) to enable LLM-powered question answering with:
+This project extends the TAP LMS Frappe application with a powerful, conversational AI layer. It provides a single, robust API endpoint that can understand user questions and intelligently route them to the best tool—either a direct database query or a semantic vector search—to provide accurate, context-aware answers.
 
-- **Graph RAG (Neo4j)** – preferred when enabled
-- **SQL Agent (MariaDB)**
-- **Vector RAG (Pinecone)** – universal fallback
+The system is designed for multi-turn conversations, automatically managing chat history to understand follow-up questions.
 
-A single REST endpoint exposes the router so external systems (e.g., Griffin webhooks) can call it securely.
+## 🚀 Core Architecture
 
-## 🔀 Routing (current behavior)
+The system's intelligence lies in its central router, which acts as a decision-making brain. When a query is received, it follows this flow:
 
-- If Neo4j is enabled, route to Graph RAG; on failure, fallback to Pinecone.
-- If Neo4j is disabled, route to SQL Agent; on failure, fallback to Pinecone.
+**Intelligent Routing**: An LLM analyzes the user's query to determine its intent.
 
- The public API wires into this router and supports GET & POST (Frappe whitelisted), and logs each call with `log_query_event`.
+**Tool Selection**:
+- For factual, specific questions (e.g., "list all...", "how many..."), it selects the Text-to-SQL Engine.
+- For conceptual, open-ended, or summarization questions (e.g., "summarize...", "explain..."), it selects the Vector RAG Engine.
+
+**Execution & Fallback**: The chosen engine executes the query. If it fails to produce a satisfactory answer, the system automatically falls back to the Vector RAG engine as a safety net.
+
+**Answer Synthesis**: The retrieved data is passed to an LLM, which generates a final, human-readable answer.
 
 ## 📦 Installation
 
-Ensure TAP LMS is installed on your site:
+Ensure TAP LMS is installed on the site:
 
 ```bash
-bench get-app tap_lms <org-repo-url>
-bench --site <yoursite> install-app tap_lms
+bench get-app tap_lms <repo-url>
+bench --site <site-name> install-app tap_lms
 ```
 
-Pull this extension code into the same app (adds `infra/`, `services/` and `api/`).
+Add the code for this AI engine to the tap_lms app directory.
 
-Rebuild & restart:
+Finally, install the required Python libraries into the bench's virtual environment:
 
 ```bash
-bench build
-bench restart
+bench pip install langchain-openai pinecone-client frappe-client
 ```
 
 ## ⚙️ Configuration
 
-Put these keys in your site's `site_config.json` (examples):
+Add the following keys to the site's `site_config.json`:
 
 ```json
 {
@@ -44,144 +46,124 @@ Put these keys in your site's `site_config.json` (examples):
   "embedding_model": "text-embedding-3-small",
 
   "pinecone_api_key": "pcn-xxxx",
-  "pinecone_index": "tap-lms-byo",
-
-  "neo4j_uri": "neo4j+s://xxxx.databases.neo4j.io",
-  "neo4j_user": "neo4j",
-  "neo4j_password": "xxxx",
-  "neo4j_database": "neo4j",
-  "enable_neo4j": true
+  "pinecone_index": "tap-lms-byo"
 }
 ```
 
-- The router endpoint invokes `route_query(q)` under the hood.
-- Run `tap_lms/schema/generate_schema.py` file once to get **TAP LMS** doctypes entire schema in json. 
-- Schema is read from `tap_lms_schema.json` through `load_schema()` (used across services).
+## 🧭 One-Time Setup
 
-## 🧭 Required one-time setup (in order)
+Follow these steps in order to initialize the system.
 
-This is the minimal working sequence to bring all 3 engines online.
-Run any step you actually need (e.g., skip Neo4j if disabled).
+### 1) Generate the Database Schema
 
-### 1) Ensure schema JSON exists
-
-Place your curated schema at: `tap_lms/schema/tap_lms_schema.json`.
-(It is consumed by multiple modules via `load_schema()`)
-
-### 2) (Optional) Neo4j migration
-
-Populate the graph from your DB based on the allow-list & joins in the schema:
+This script inspects the Frappe DocTypes and creates a `tap_lms_schema.json` file. This schema is crucial for both the Text-to-SQL and Vector RAG engines.
 
 ```bash
-bench execute tap_lms.infra.neo4j_migrator.run_all --kwargs "{'clear_db': False}"
+# Run this from app's root directory
+python3 -m tap_lms.schema.generate_schema
 ```
 
-The migrator is schema-driven and builds nodes/relationships accordingly (plus vector fields).
+### 2) Create the Pinecone Index
 
-### 3) Pinecone: create/ensure index
+This command prepares Pinecone account by creating the vector index where document embeddings will be stored.
 
 ```bash
 bench execute tap_lms.services.pinecone_index.cli_ensure_index
 ```
 
-### 4) Pinecone: ingest vectors (BYO embeddings)
+### 3) Populate the Pinecone Index (Upsert Data)
 
-All doctypes (recommended):
-
-```bash
-bench execute tap_lms.services.pinecone_store.cli_upsert_all --kwargs "{'group_records': 120}"
-```
-
-Or single doctype:
+This command reads schema, processes the data from allow-listed DocTypes, creates embeddings, and saves them to Pinecone.
 
 ```bash
-bench execute tap_lms.services.pinecone_store.cli_upsert_doctype --kwargs "{'doctype':'Student','group_records':100}"
+bench execute tap_lms.services.pinecone_store.cli_upsert_all
 ```
 
-## 🧪 Sanity checks (CLIs)
+## 🧪 Testing from the Command Line
 
-### Pinecone search (vector)
+The primary entry point for all testing is the main router's CLI. It automatically manages conversation history for a given `user_id`.
+
+### Turn 1: Ask an initial question
+
+This can be a factual query (handled by SQL) or a conceptual one (handled by RAG).
 
 ```bash
-bench execute tap_lms.services.pinecone_store.cli_search_auto --kwargs "{'q':'recommend activities for 9th graders','k':8,'route_top_n':4}"
+# Factual Query (will use Text-to-SQL)
+bench execute tap_lms.services.router.cli --kwargs "{'q':'list all course videos with basic difficulty', 'user_id':'test_user_1'}"
+
+# Conceptual Query (will use Vector RAG)
+bench execute tap_lms.services.router.cli --kwargs "{'q':'summarize the finlit video on needs vs wants', 'user_id':'test_user_1'}"
 ```
 
-This will embed the query and return normalized matches list.
+### Turn 2: Ask a follow-up question
 
-### Graph RAG (Neo4j)
+The system will automatically use the cache to retrieve the history for `test_user_1` and understand the context.
 
 ```bash
-bench execute tap_lms.services.graph_rag.cli --kwargs "{'q':'List out distribution of students school wise'}"
+bench execute tap_lms.services.router.cli --kwargs "{'q':'summarize the first one', 'user_id':'test_user_1'}"
 ```
 
-The graph engine loads schema, selects candidate doctypes, generates/sanitizes Cypher, executes, and returns rows.
-
-### SQL Agent (MariaDB)
-
-```bash
-bench execute tap_lms.services.sql_agent.cli --kwargs "{'q':'How many students are in grade 9?'}"
-```
-
-The agent is built with the allow-list and produces an answer + (when available) intermediate SQL for visibility.
-
-### Router (end-to-end)
-
-```bash
-bench execute tap_lms.services.router.cli --kwargs "{'q':'9th ke students k liye activities suggest karo'}"
-```
-
-The router refines the language (Hinglish → English), picks doctypes once, then follows the routing policy described above.
-
-## 🌐 REST API
+## 🌐 Production REST API
 
 ### Endpoint
 
 ```
-/api/method/tap_lms.api.query.query
+POST /api/method/tap_lms.api.query.query
 ```
 
-### Auth
+### Authentication
+
+The API uses Frappe's standard token-based authentication. Use an API Key and Secret generated from a dedicated API user.
 
 ```
 Authorization: token <api_key>:<api_secret>
 ```
 
-### GET
+### Request Body
 
-```bash
-curl -G "http://localhost:8000/api/method/tap_lms.api.query.query" \
-  -H "Authorization: token <api_key>:<api_secret>" \
-  --data-urlencode "q=recommend activities for 9th graders"
+The API accepts a JSON body. The `user_id` is critical for maintaining separate conversation histories for different users (e.g., different WhatsApp numbers).
+
+```json
+{
+    "q": "Your question here",
+    "user_id": "whatsapp:+911234567890"
+}
 ```
 
-### POST
+### Example curl Command
+
+This is how an external service (like GCP webhook for WhatsApp) would call the API.
 
 ```bash
-curl -X POST "http://localhost:8000/api/method/tap_lms.api.query.query" \
-  -H "Authorization: token <api_key>:<api_secret>" \
-  -H "Content-Type: application/json" \
-  -d '{"q":"recommend activities for 9th graders"}'
+curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
+ -H "Authorization: token <your_api_key>:<your_api_secret>" \
+ -H "Content-Type: application/json" \
+ -d '{
+    "q": "summarize the video about goal setting",
+    "user_id": "whatsapp:+911234567890"
+ }'
 ```
 
-This endpoint supports GET & POST and extracts `q` from URL or JSON body.
-Each call is rate-limited and logged via `log_query_event`.
+## 🔍 Core File Descriptions
 
-## 🔍 What each core file does
+**`tap_lms/api/query.py`**: The production-ready REST API endpoint. It handles requests, manages authentication and rate limiting, and orchestrates the conversational flow by managing user-specific chat history in the cache.
 
-- **`tap_lms/api/query.py`** – Frappe REST API (GET/POST) → calls the router; rate limits & logs usage.
+**`tap_lms/services/router.py`**: The central brain of the system. It takes a user's query and chat history, uses an LLM to choose the best tool (`text_to_sql` or `vector_search`), and manages the fallback logic.
 
-- **`tap_lms/services/router.py`** – Orchestrates Graph→Pinecone or SQL→Pinecone fallback based on `enable_neo4j`.
+**`tap_lms/services/sql_answerer.py`**: The Text-to-SQL engine. It uses an intelligent schema builder to give an LLM rich context about the database, enabling it to generate accurate SQL queries for factual questions.
 
-- **`tap_lms/services/sql_agent.py`** – Builds a safe SQL agent using the allow-list in schema; returns answer + candidate SQL (when available).
+**`tap_lms/services/rag_answerer.py`**: The Vector RAG engine. It handles conceptual and summarization questions by finding semantically similar documents in the Pinecone index and using them as context for an LLM to synthesize an answer.
 
-- **`tap_lms/services/graph_rag.py`** – Graph-only RAG: selects doctypes, prompts LLM for Cypher, sanitizes, runs on Neo4j, returns rows.
+**`tap_lms/services/pinecone_store.py`**: Manages all interactions with the Pinecone vector database, including the data upsert pipeline and the search logic.
 
-- **`tap_lms/services/pinecone_store.py`** – Pinecone utilities: ensure index, upsert all/doctype, and query; uses BYO OpenAI embeddings by default; index name via config.
+**`tap_lms/services/pinecone_index.py`**: Manages the Pinecone index lifecycle, including creation and deletion, via command-line functions.
 
-- **`tap_lms/services/rag_answerer.py`** – Pulls Pinecone matches → loads raw rows → synthesizes final answer with LLM; CLI for quick runs.
+**`tap_lms/services/doctype_selector.py`**: A crucial pre-processing step that uses an LLM to intelligently select the most relevant DocTypes for a given query, narrowing the search space for the RAG engine.
 
-- **`tap_lms/infra/neo4j_migrator.py`** – Schema-driven graph migration, constraints/indexes, and optional vector fields; runs via `run_all`.
+**`tap_lms/services/ratelimit.py`**: A utility for enforcing rate limits on API usage, using the Frappe cache to track requests.
 
-- **`tap_lms/infra/sql_catalog.py`** – Loads the declarative schema JSON used by SQL Agent / Graph RAG / Router.
+**`tap_lms/schema/generate_schema.py`**: A utility script to generate a detailed JSON representation of your Frappe DocTypes, which is used by both the SQL and RAG engines.
 
-- **`tap_lms/infra/ai_logging.py`** – Helper used by the API to log each query (already hooked in `query.py`).
+**`tap_lms/infra/config.py`**: A centralized helper for retrieving configuration settings (like API keys) from `site_config.json`.
+
+**`tap_lms/infra/sql_catalog.py`**: A simple loader for the `tap_lms_schema.json` file, making it accessible across different services.

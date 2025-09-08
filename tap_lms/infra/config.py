@@ -48,11 +48,8 @@ class TAPConfig:
         frappe = _try_import_frappe()
         site_config = _read_site_config_from_frappe(frappe) if frappe else {}
 
-        # 2) If Frappe not available try filesystem (optional)
-        if not site_config and os.getenv("USE_FRAPPE_SITE_CONFIG", "false").lower() == "true":
-            site_config = _read_site_config_from_path()
 
-        # 3) Defaults 
+        # 2) Defaults 
         cfg = {
             # API Keys
             "openai_api_key": "",
@@ -62,15 +59,20 @@ class TAPConfig:
             "embedding_model": "text-embedding-3-small",
 
             # Neo4j
-            "neo4j_uri": "",
-            "neo4j_user": "neo4j",
-            "neo4j_password": "",
-            "neo4j_database": "neo4j",
-            "aura_instance_id": "",
-            "aura_instance_name": "",
+            # "neo4j_uri": "",
+            # "neo4j_user": "neo4j",
+            # "neo4j_password": "",
+            # "neo4j_database": "neo4j",
+            # "aura_instance_id": "",
+            # "aura_instance_name": "",
             
             # Pinecone
             "pinecone_api_key": "",
+
+            # Qdrant
+            "qdrant_url": "",
+            "qdrant_api_key": "",
+            "qdrant_collection": "",
 
             # Redis (optional for microservice)
             "redis_url": "redis://127.0.0.1:6379",
@@ -87,7 +89,7 @@ class TAPConfig:
             "enable_debug": True,
         }
 
-        # 4) Merge site_config values (if any)
+        # 3) Merge site_config values (if any)
         #    Keep your original key names so it’s a drop-in
         for k in cfg.keys():
             if k in site_config:
@@ -95,21 +97,21 @@ class TAPConfig:
 
         self._config = cfg
         print("✅ Configuration loaded successfully")
-        self._log_neo4j_config()
+        # self._log_neo4j_config()
 
-    def _log_neo4j_config(self):
-        neo4j_uri = self.get("neo4j_uri")
-        if neo4j_uri:
-            if "neo4j+s://" in neo4j_uri:
-                print("✅ Neo4j Cloud (Aura) configuration detected")
-                print(f"   🌐 Instance: {self.get('aura_instance_name', 'Unknown')}")
-                print(f"   🆔 ID: {self.get('aura_instance_id', 'Unknown')}")
-            elif "bolt://" in neo4j_uri:
-                print("✅ Neo4j Local configuration detected")
-            else:
-                print("⚠️ Unknown Neo4j URI format")
-        else:
-            print("❌ No Neo4j URI configured")
+    # def _log_neo4j_config(self):
+    #     neo4j_uri = self.get("neo4j_uri")
+    #     if neo4j_uri:
+    #         if "neo4j+s://" in neo4j_uri:
+    #             print("✅ Neo4j Cloud (Aura) configuration detected")
+    #             print(f"   🌐 Instance: {self.get('aura_instance_name', 'Unknown')}")
+    #             print(f"   🆔 ID: {self.get('aura_instance_id', 'Unknown')}")
+    #         elif "bolt://" in neo4j_uri:
+    #             print("✅ Neo4j Local configuration detected")
+    #         else:
+    #             print("⚠️ Unknown Neo4j URI format")
+    #     else:
+    #         print("❌ No Neo4j URI configured")
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._config.get(key, default)
@@ -117,35 +119,35 @@ class TAPConfig:
     def is_enabled(self, feature: str) -> bool:
         return self._config.get(f"enable_{feature}", False)
 
-    def get_neo4j_config(self) -> dict:
-        return {
-            "uri": self.get("neo4j_uri"),
-            "user": self.get("neo4j_user"),
-            "password": self.get("neo4j_password"),
-            "database": self.get("neo4j_database"),
-            "aura_instance_id": self.get("aura_instance_id"),
-            "aura_instance_name": self.get("aura_instance_name"),
-            "is_aura": "neo4j+s://" in self.get("neo4j_uri", ""),
-            "is_local": "bolt://" in self.get("neo4j_uri", ""),
-        }
+    # def get_neo4j_config(self) -> dict:
+    #     return {
+    #         "uri": self.get("neo4j_uri"),
+    #         "user": self.get("neo4j_user"),
+    #         "password": self.get("neo4j_password"),
+    #         "database": self.get("neo4j_database"),
+    #         "aura_instance_id": self.get("aura_instance_id"),
+    #         "aura_instance_name": self.get("aura_instance_name"),
+    #         "is_aura": "neo4j+s://" in self.get("neo4j_uri", ""),
+    #         "is_local": "bolt://" in self.get("neo4j_uri", ""),
+    #     }
 
     def validate_setup(self) -> dict:
-        neo4j_config = self.get_neo4j_config()
+        # neo4j_config = self.get_neo4j_config()
         status = {
             "openai_ready": bool(self.get("openai_api_key")),
-            "neo4j_ready": bool(neo4j_config["uri"]) and self.is_enabled("neo4j"),
-            "neo4j_cloud": neo4j_config["is_aura"],
+            # "neo4j_ready": bool(neo4j_config["uri"]) and self.is_enabled("neo4j"),
+            # "neo4j_cloud": neo4j_config["is_aura"],
             "redis_ready": bool(self.get("redis_url")) and self.is_enabled("redis"),
         }
         print("🔍 Service Status:")
         for service, ready in status.items():
             print(f"   {'✅' if ready else '❌'} {service}: {'Ready' if ready else 'Not configured'}")
-        if status["neo4j_ready"]:
-            if neo4j_config["is_aura"]:
-                print(f"   🌐 Neo4j Aura Instance: {neo4j_config['aura_instance_name']}")
-            elif neo4j_config["is_local"]:
-                print("   🏠 Neo4j Local Instance")
-        return status
+        # if status["neo4j_ready"]:
+        #     if neo4j_config["is_aura"]:
+        #         print(f"   🌐 Neo4j Aura Instance: {neo4j_config['aura_instance_name']}")
+        #     elif neo4j_config["is_local"]:
+        #         print("   🏠 Neo4j Local Instance")
+        # return status
 
 # Global instance + helpers
 config = TAPConfig()
@@ -158,5 +160,5 @@ def dump_config() -> dict:
     return config._config
 
 
-def get_neo4j_config() -> dict:
-    return config.get_neo4j_config()
+# def get_neo4j_config() -> dict:
+#     return config.get_neo4j_config()

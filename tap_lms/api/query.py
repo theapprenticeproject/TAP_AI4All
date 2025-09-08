@@ -1,16 +1,57 @@
 # tap_lms/api/query.py
+
 import frappe
+import json
+from typing import Dict, Any, List
+
+# Main entry point for the entire answering pipeline
 from tap_lms.services.router import answer as route_query
 from tap_lms.services.ratelimit import check_rate_limit
-from tap_lms.infra.ai_logging import log_query_event, now_ms
 
+# --- Resilient Cache Helper Functions ---
+def _get_history_from_cache(user_id: str) -> List[Dict[str, str]]:
+    """Safely retrieves and decodes chat history from the cache for a given user."""
+    try:
+        cache_key = f"chat_history_{user_id}"
+        cached_data = frappe.cache().get(cache_key)
+        if isinstance(cached_data, bytes):
+            cached_data = cached_data.decode('utf-8')
+        if isinstance(cached_data, str) and cached_data:
+            return json.loads(cached_data)
+        return []
+    except Exception as e:
+        frappe.log_error(f"Failed to retrieve chat history for {user_id}: {e}")
+        return []
 
-@frappe.whitelist(methods=["GET", "POST"], allow_guest=False)
-def query(q: str = None, limit: int = 50):
+def _save_history_to_cache(user_id: str, history: List[Dict[str, str]]):
+    """Safely serializes and saves chat history to the cache."""
+    try:
+        cache_key = f"chat_history_{user_id}"
+        history_to_save = history[-10:]
+        frappe.cache().set(cache_key, json.dumps(history_to_save))
+    except Exception as e:
+        frappe.log_error(f"Failed to save chat history for {user_id}: {e}")
+        print(f"> [Warning] Failed to save chat history for user {user_id}")
+
+# --- API Endpoint ---
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def query():
     """
-    Public API: Unified Router (Graph → SQL → Pinecone fallback).
-    Supports both GET and POST.
+    Public API endpoint for the conversational assistant.
+    Accepts a POST request with a JSON body containing 'q' and optional 'user_id'.
     """
+    user_id = frappe.session.user
+
+    data = frappe.local.form_dict or {}
+    q = data.get("q")
+    
+    if data.get("user_id"):
+        user_id = data.get("user_id")
+
+    if not q:
+        frappe.throw("Missing required parameter in POST body: q (the user's question)")
+
+    # --- Rate Limiting ---
     auth = frappe.get_request_header("Authorization") or ""
     api_key = None
     if auth.lower().startswith("token "):
@@ -19,36 +60,30 @@ def query(q: str = None, limit: int = 50):
         except Exception:
             api_key = None
 
-    ok, remaining, reset = check_rate_limit(api_key, scope="router_query", limit=60, window_sec=60)
+    ok, remaining, reset = check_rate_limit(
+        api_key=api_key,
+        scope=f"query_api_{user_id}", 
+        limit=60, 
+        window_sec=60
+    )
     if not ok:
         frappe.throw(
-            f"Rate limit exceeded. Try again after {reset}. Remaining: {remaining}",
+            f"Rate limit exceeded. Try again in {reset} seconds.",
             frappe.TooManyRequestsError,
         )
 
-    # If it's a POST and q is not passed as arg, try extracting from JSON body
-    if not q and frappe.request and frappe.request.method == "POST":
-        data = frappe.local.form_dict or {}
-        q = data.get("q")
+    # --- Main Conversational Logic ---
+    chat_history = _get_history_from_cache(user_id)
+    out = route_query(q, history=chat_history)
+    
+    chat_history.append({"role": "user", "content": q})
+    chat_history.append({"role": "assistant", "content": out.get("answer", "")})
+    
+    _save_history_to_cache(user_id, chat_history)
 
-    if not q:
-        frappe.throw("Missing required param: q")
-
-    t0 = now_ms()
-    out = {}
-    success = False
-    try:
-        out = route_query(q)  # Graph → SQL → Pinecone
-        success = out.get("success", True)
-        return out
-    finally:
-        log_query_event({
-            "question": q,
-            "engine": out.get("engine") if out else "router",
-            "success": 1 if success else 0,
-            "execution_ms": now_ms() - t0,
-            "api_key": api_key,
-            "response_preview": str(out)[:300] if out else "error",
-            "answer": out.get("answer") if out else "error",
-            "metadata": out.get("metadata") if out else {},
-        })
+    # --- Format and Return Response ---
+    if hasattr(frappe.local, "response") and isinstance(frappe.local.response.headers, dict):
+        frappe.local.response.headers["X-RateLimit-Limit"] = 60
+        frappe.local.response.headers["X-RateLimit-Remaining"] = remaining
+    
+    return out

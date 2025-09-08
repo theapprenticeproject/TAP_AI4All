@@ -1,6 +1,5 @@
 # tap_lms/services/pinecone_index.py
 # Added a delete_index function for easy resets.
-
 from __future__ import annotations
 import time
 import frappe

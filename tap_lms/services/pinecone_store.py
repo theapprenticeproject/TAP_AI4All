@@ -1,5 +1,4 @@
 # tap_lms/services/pinecone_store.py
-
 from __future__ import annotations
 
 import time

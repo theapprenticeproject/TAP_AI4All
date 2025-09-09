@@ -172,7 +172,7 @@ def answer_from_pinecone(
     llm = _get_llm()
     system_prompt = (
         "You are a helpful assistant. Answer the user's final question using ONLY the provided CONTEXT and CHAT HISTORY. "
-        "If the context is insufficient, say you don't know. Be concise."
+        #"If the context is insufficient, say you don't know. Be concise."
     )
     
     messages = [{"role": "system", "content": system_prompt}]

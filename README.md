@@ -297,3 +297,97 @@ curl -X POST "http://your.frappe.site/api/method/tap_lms.api.query.query" \
 **`tap_lms/infra/config.py`**: A centralized helper for retrieving configuration settings (like API keys) from `site_config.json`.
 
 **`tap_lms/infra/sql_catalog.py`**: A simple loader for the `tap_lms_schema.json` file, making it accessible across different services.
+
+## 🤖 Telegram Bot Demo (Local Setup)
+
+This guide explains how to connect the AI engine to a Telegram bot for a live, local demonstration.
+
+### Architecture Overview
+
+```mermaid
+graph LR
+    User -- "Sends Message" --> Telegram
+    Telegram -- "Webhook POST" --> Ngrok
+    Ngrok -- "Forwards to" --> LocalBridge["telegram_webhook.py<br>(Local Python Script)"]
+    LocalBridge -- "Calls API" --> FrappeAPI["Frappe API<br>(localhost:8000)"]
+    FrappeAPI -- "Gets Answer" --> Router["AI Engine"]
+    Router -- "Returns Answer" --> FrappeAPI
+    FrappeAPI -- "Sends Answer" --> LocalBridge
+    LocalBridge -- "Replies to User" --> Telegram
+```
+
+### Step 1: Create a Telegram Bot
+
+1. Open Telegram and search for `@BotFather`.
+2. Start a chat and send the command `/newbot`.
+3. Follow the instructions to give the bot a name and username.
+4. **BotFather will provide a unique access token** that looks like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`. Copy this token securely.
+
+### Step 2: Expose Local Server with Ngrok
+
+Ngrok creates a secure, public URL that tunnels to a port on the local machine. This enables Telegram servers to communicate with the local development environment.
+
+1. **Install Ngrok:** Follow instructions at ngrok.com.
+2. **Authenticate Ngrok:** Run `ngrok config add-authtoken <token>` once.
+3. **Start Ngrok:** The Python bridge script runs on port `5000`. In a new terminal window, navigate to the `frappe-bench` directory and run:
+
+```bash
+ngrok http 5000
+```
+
+4. Ngrok will display a **Forwarding URL** like `https://random-string-123.ngrok-free.app`. Copy this HTTPS URL.
+
+### Step 3: Set Up and Run the Telegram Bridge
+
+The `telegram_webhook.py` script acts as a bridge between Telegram and the Frappe API. It's a web server that listens for messages from Ngrok.
+
+1. **Install Libraries:**
+
+```bash
+bench pip install python-telegram-bot Flask requests
+```
+
+2. **Configure Credentials:** Open `telegram_webhook.py` and replace the placeholder values with actual credentials.
+3. **Run the Script:** In another terminal window, navigate to `frappe-bench`, activate the virtual environment, and run:
+
+```bash
+# Activate the environment
+source env/bin/activate
+# Run the bridge
+python apps/tap_lms/telegram_webhook.py
+```
+
+The output should show `* Running on http://127.0.0.1:5000`.
+
+### Step 4: Set the Telegram Webhook
+
+Configure Telegram to send all bot messages to the public Ngrok URL.
+
+1. **Construct the URL:** Combine the Bot Token and Ngrok HTTPS URL.
+2. **Run the Command:** In a fourth terminal window, execute the curl command with actual values:
+
+```bash
+curl -F "url=https://<NGROK_URL>/webhook" \
+     "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook"
+```
+
+**Example:**
+
+```bash
+curl -F "url=https://random-string-123.ngrok-free.app/webhook" \
+     "https://api.telegram.org/bot123456:ABC-DEF1234/setWebhook"
+```
+
+3. The response should be `{"ok":true,"result":true,"description":"Webhook was set"}`.
+
+### Step 5: Test the Bot
+
+With all components running:
+- Frappe bench is active
+- Ngrok tunnel is established
+- Python bridge script is listening
+
+Open Telegram, find the bot, and start a conversation. 
+
+<img width="669" height="926" alt="Screenshot 2025-09-09 194755" src="https://github.com/user-attachments/assets/68fc5401-192b-4c2e-98cd-71a9d123a5d8" />
+<img width="641" height="781" alt="Screenshot 2025-09-09 195216" src="https://github.com/user-attachments/assets/649b6dcd-8bd1-4cb4-a607-7d5f0b81e0e6" />

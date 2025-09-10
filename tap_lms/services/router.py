@@ -89,6 +89,26 @@ def _is_failure(res: dict) -> bool:
     if any(p in text for p in bad_phrases): return True
     return False
 
+def _is_failure(res: dict) -> bool:
+    """
+    Robust failure detector. Checks for explicit failure flags first,
+    then checks for common "soft failure" phrases.
+    """
+    if not res: return True
+
+    # 1. Check for an explicit `success: false` flag from the tool.
+    if res.get("success") is False:
+        return True
+
+    # 2. Check for common "soft failure" phrases for cases where the tool
+    #    ran correctly but couldn't find an answer.
+    text = (res.get("answer") or "").strip().lower()
+    bad_phrases = ("i don't know", "unable to", "cannot", "no answer", "failed", "error", "could not generate a valid sql", "returned no results")
+    if any(p in text for p in bad_phrases):
+        return True
+        
+    return False    
+
 def _with_meta(res: dict, original_query: str, primary: str, fallback: bool) -> dict:
     res.setdefault("metadata", {})
     res["metadata"].update({

@@ -176,16 +176,27 @@ def answer_from_sql(
     sql_query = generation_result.get("sql")
 
     if not sql_query:
-        return {"question": query, "answer": "I could not generate a valid SQL query.", "sql_query": None}
+        # Explicitly signal failure if no valid SQL was generated.
+        return {"question": query, "answer": "I could not generate a valid SQL query.", "sql_query": None, "success": False}
+    print(f"\n> Generated SQL Query:\n{sql_query}")
+    
+    try:
+        results = _execute_sql(sql_query)
+    except Exception as e:
+        # On a database error, return a specific failure flag for the router.
+        return {"question": query, "answer": f"The query failed to execute. Error: {e}", "sql_query": sql_query, "success": False}
 
-    results = _execute_sql(sql_query)
+    if not results:
+        # This is a "soft failure" - the query ran but found nothing.
+        return {"question": query, "answer": "The query ran successfully but returned no results.", "sql_query": sql_query, "success": True}
     final_answer = _synthesize_answer(query, sql_query, results, chat_history)
 
     return {
         "question": query,
         "answer": final_answer,
         "sql_query": sql_query,
-        "raw_results": results
+        "raw_results": results,
+        "success": True
     }
 
 # --- Bench CLI Helper ---

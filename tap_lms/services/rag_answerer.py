@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import annotations
-
 import json
 import time
 from typing import Dict, Any, List, Optional
@@ -9,76 +6,85 @@ import frappe
 from langchain_openai import ChatOpenAI
 
 from tap_lms.infra.config import get_config
-from tap_lms.services.pinecone_store import (
-    search_auto_namespaces,
-    get_db_columns_for_doctype,
-)
+# We no longer need the filter extractor
+from tap_lms.services.pinecone_store import search_auto_namespaces, get_db_columns_for_doctype
+from tap_lms.services.doctype_selector import pick_doctypes
 
-# --- A local version of the text formatter is needed here ---
-def _to_plain(v: Any) -> str:
-    """Make values JSON-safe for text conversion."""
-    if v is None: return ""
-    if isinstance(v, (str, int, float, bool)): return str(v)
-    if hasattr(v, 'isoformat'): return v.isoformat()
-    return str(v)
+# --- NEW: LLM-based Query Refiner for Conversational Context ---
+
+REFINER_PROMPT = """Given a chat history and a follow-up question, rewrite the follow-up question to be a standalone question that a search engine can understand, incorporating the necessary context from the history.
+
+- If the follow-up is already a complete question, return it as is.
+- Incorporate relevant context from the history (like names of items mentioned) into the new question.
+- Do NOT answer the question, just reformulate it.
+
+Return ONLY the refined, standalone question.
+"""
+
+def _llm(model: str = "gpt-4o-mini", temperature: float = 0.2) -> ChatOpenAI:
+    """Initializes the Language Model client."""
+    api_key = get_config("openai_api_key")
+    return ChatOpenAI(model_name=model, openai_api_key=api_key, temperature=temperature, max_tokens=1500)
+
+def _refine_query_with_history(query: str, history: List[Dict[str, str]]) -> str:
+    """Uses an LLM to create a standalone query from a follow-up question and history."""
+    if not history:
+        return query
+
+    llm = _llm(temperature=0.0)
+    # Format the history for the prompt
+    formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
+    
+    user_prompt = (
+        f"CHAT HISTORY:\n{formatted_history}\n\n"
+        f"FOLLOW-UP QUESTION: \"{query}\"\n\n"
+        f"REFINED STANDALONE QUESTION:"
+    )
+    
+    try:
+        resp = llm.invoke([("system", REFINER_PROMPT), ("user", user_prompt)])
+        refined_query = getattr(resp, "content", query).strip()
+        print(f"> Refined Query for Search: {refined_query}")
+        return refined_query
+    except Exception as e:
+        frappe.log_error(f"Query refiner failed: {e}")
+        return query
+
+
+# --- Core RAG Logic ---
 
 def _record_to_text(doctype: str, row: Dict[str, Any]) -> str:
-    """
-    Flattens a record to a text block, giving weight to the title field.
-    """
+    """Flattens a record to a text block, giving weight to the title field."""
     parts = []
     meta = frappe.get_meta(doctype)
-    
-    title_field = None
-    title_value = None
-
+    title_field, title_value = None, None
     official_title_field = meta.title_field
     if official_title_field and official_title_field in row and row[official_title_field]:
-        title_field = official_title_field
-        title_value = row[title_field]
+        title_field, title_value = official_title_field, row[official_title_field]
     else:
-        fallback_fields = [
-            'title', 'name1', 'video_name', 'assignment_name', 'project_name', 
-            'quiz_name', 'objective_name', 'unit_name', 'comp_name', 'note_name'
-        ]
+        fallback_fields = ['title', 'name1', 'video_name', 'assignment_name', 'project_name', 'quiz_name', 'objective_name', 'unit_name', 'comp_name', 'note_name']
         for field in fallback_fields:
             if field in row and row[field]:
-                title_field = field
-                title_value = row[field]
+                title_field, title_value = field, row[field]
                 break
-
     if title_field and title_value:
         title_label = meta.get_field(title_field).label or title_field.replace("_", " ").title()
         parts.append(f"{title_label}: {title_value}")
-
     parts.append(f"DocType: {doctype}")
     parts.append(f"ID: {row.get('name','')}")
-    
     for k, v in row.items():
-        if k in ('name', title_field) or v in (None, ""):
-            continue
-        parts.append(f"{k}: {_to_plain(v)}")
-        
+        if k in ('name', title_field) or v in (None, ""): continue
+        v_str = v.isoformat() if hasattr(v, 'isoformat') else str(v)
+        parts.append(f"{k}: {v_str}")
     return "\n".join(parts)
 
 
-def _get_llm(model: str = "gpt-4o-mini", temperature: float = 0.2) -> ChatOpenAI:
-    api_key = get_config("openai_api_key")
-    if not api_key: raise RuntimeError("Missing openai_api_key")
-    return ChatOpenAI(model_name=model, openai_api_key=api_key, temperature=temperature, max_tokens=1500)
-
 def _build_context_from_hits(hits: List[Dict[str, Any]], max_chars: int = 12000) -> Dict[str, Any]:
-    """
-    Builds context by fetching full records from Frappe DB based on Pinecone hit metadata.
-    This is the robust "two-step fetch" method.
-    """
+    """Builds context by fetching full records from Frappe DB based on Pinecone hit metadata."""
     context_chunks: List[str] = []
     sources: List[Dict[str, Any]] = []
     used_chars = 0
     
-    # This import is now needed here
-    from tap_lms.services.pinecone_store import _record_to_text, get_db_columns_for_doctype
-
     for h in hits:
         meta = h.get("metadata") or {}
         doctype = meta.get("doctype")
@@ -106,37 +112,6 @@ def _build_context_from_hits(hits: List[Dict[str, Any]], max_chars: int = 12000)
             
     return {"context_text": "\n\n---\n\n".join(context_chunks), "sources": sources}
 
-# --- Contextual Query Refiner ---
-
-REFINER_PROMPT = """Given a chat history and a follow-up question, rewrite the follow-up question to be a standalone question that a search engine can understand, incorporating the necessary context from the history.
-
-Return ONLY the refined, standalone question. Do not answer the question.
-"""
-
-def _refine_query_with_history(query: str, chat_history: List[Dict[str, str]]) -> str:
-    """Uses an LLM to make a follow-up question self-contained."""
-    if not chat_history:
-        return query
-
-    llm = _get_llm(temperature=0.0) # Use zero temperature for predictable refinement
-    history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in chat_history])
-    prompt = (
-        f"CHAT HISTORY:\n{history_str}\n\n"
-        f"FOLLOW-UP QUESTION:\n{query}\n\n"
-        f"REFINED STANDALONE QUESTION:"
-    )
-    
-    try:
-        resp = llm.invoke([("system", REFINER_PROMPT), ("user", prompt)])
-        refined_query = getattr(resp, "content", query).strip()
-        print(f"> Refined Query for Search: {refined_query}")
-        return refined_query
-    except Exception as e:
-        frappe.log_error(f"Query refinement failed: {e}")
-        return query
-
-# --- Main Answer Function ---
-
 def answer_from_pinecone(
     q: str,
     k: int = 8,
@@ -144,16 +119,16 @@ def answer_from_pinecone(
     chat_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
     t0 = time.time()
-    chat_history = chat_history or []
+    history = chat_history or []
 
-    # 1. Refine the query with history before searching
-    refined_query = _refine_query_with_history(q, chat_history)
+    # 1. Refine the query to be context-aware before doing anything else.
+    refined_query_for_search = _refine_query_with_history(q, history)
 
-    # 2. Route & search using the refined query (NO METADATA FILTERS)
-    routed = search_auto_namespaces(q=refined_query, k=k, route_top_n=route_top_n)
+    # 2. Use the refined query for both routing and searching (NO FILTERS).
+    routed = search_auto_namespaces(q=refined_query_for_search, k=k, route_top_n=route_top_n)
     matches = routed.get("matches") or []
 
-    # 3. Build context from DB hits (two-step fetch)
+    # 3. Build context from DB hits (two-step fetch).
     ctx = _build_context_from_hits(matches)
     context_text = ctx["context_text"]
     sources = ctx["sources"]
@@ -165,40 +140,42 @@ def answer_from_pinecone(
             "success": True,
             "engine": "rag-pinecone",
             "execution_time": time.time() - t0,
-            "metadata": {"refined_query_for_search": refined_query, "routed_doctypes": routed.get("routed_doctypes"), "sources": []}
+            "metadata": {
+                "refined_query_for_search": refined_query_for_search,
+                "routed_doctypes": routed.get("routed_doctypes"),
+                "sources": [],
+            },
         }
 
-    # 4. LLM synthesis with chat history and ORIGINAL question
-    llm = _get_llm()
+    # 4. Use the original query and full history for the final answer synthesis.
+    synthesis_llm = _llm()
     system_prompt = (
-        "You are a helpful assistant. Answer the user's final question using ONLY the provided CONTEXT and CHAT HISTORY. "
+        "You are a helpful assistant. Answer the user's FINAL question based ONLY on the provided CONTEXT and CHAT HISTORY.\n"
         #"If the context is insufficient, say you don't know. Be concise."
     )
     
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(chat_history)
+    messages.extend(history)
     messages.append({
         "role": "user",
         "content": f"CONTEXT:\n{context_text}\n\nBased on the context, answer this question:\n{q}"
     })
 
-    resp = llm.invoke(messages)
-    answer = getattr(resp, "content", None) or str(resp)
+    resp = synthesis_llm.invoke(messages)
+    answer = getattr(resp, "content", "Could not synthesize an answer.").strip()
 
-    # Final currency symbol fix on the answer string
-    if isinstance(answer, str):
-        answer = answer.replace('\\u20b9', '₹')
-
+    answer = answer.replace('\\u20b9', '₹')
+    
     out = {
         "question": q,
-        "answer": answer.strip(),
+        "answer": answer,
         "success": True,
         "engine": "rag-pinecone",
         "execution_time": time.time() - t0,
         "metadata": {
-            "refined_query_for_search": refined_query,
+            "refined_query_for_search": refined_query_for_search,
             "routed_doctypes": routed.get("routed_doctypes"),
-            "sources": sources
+            "sources": sources,
         },
     }
     return out

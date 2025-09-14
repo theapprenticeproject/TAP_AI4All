@@ -267,6 +267,7 @@ def search_auto_namespaces(
 # --------- bench CLIs ---------
 
 def cli_upsert_all(doctypes: Optional[List[str]] = None, since: Optional[str] = None, group_records: int = 20):
+    # use since parameter for incremental updates, e.g. "2025-10-01 12:34:56"
     out = upsert_all(doctypes=doctypes, since=since, group_records=group_records)
     print(frappe.as_json(out))
     return out

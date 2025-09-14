@@ -1,5 +1,6 @@
 # tap_lms/services/router.py
 # Final version with automatic, resilient chat history management.
+# MODIFIED to include a user-friendly message during the fallback process.
 
 import json
 from typing import Dict, Any, List, Optional
@@ -13,7 +14,7 @@ from tap_lms.services.sql_answerer import answer_from_sql
 from tap_lms.services.rag_answerer import answer_from_pinecone
 
 
-# --- LLM-based Tool Chooser ---
+# --- LLM-based Tool Chooser (Unchanged) ---
 
 ROUTER_PROMPT = """You are a query routing expert. Your job is to determine the best tool to answer a user's question based on its intent.
 
@@ -56,7 +57,7 @@ def choose_tool(query: str) -> str:
     return "vector_search"
 
 
-# --- Main Answer Function ---
+# --- Main Answer Function (MODIFIED) ---
 
 def answer(q: str, history: Optional[List[Dict[str, str]]] = None) -> dict:
     current_query = q
@@ -72,7 +73,11 @@ def answer(q: str, history: Optional[List[Dict[str, str]]] = None) -> dict:
         if _is_failure(result):
             print("> Text-to-SQL failed. Falling back to Vector Search...")
             fallback_used = True
+            # Set an interim message to be sent to the user by the client.
+            interim_message = "Searching, please wait a few more seconds..."
             result = answer_from_pinecone(current_query, chat_history=chat_history)
+            # Add the message to the final result dictionary.
+            result['interim_message'] = interim_message
     else:
         primary_tool = "vector_search"
         result = answer_from_pinecone(current_query, chat_history=chat_history)
@@ -80,34 +85,16 @@ def answer(q: str, history: Optional[List[Dict[str, str]]] = None) -> dict:
     return _with_meta(result, current_query, primary=primary_tool, fallback=fallback_used)
 
 
-# --- Helper functions ---
+# --- Helper functions (Unchanged) ---
 
 def _is_failure(res: dict) -> bool:
+    """Robust failure detector."""
     if not res: return True
+    if res.get("success") is False: return True
     text = (res.get("answer") or "").strip().lower()
     bad_phrases = ("i don't know", "unable to", "cannot", "no answer", "failed", "error", "could not generate a valid sql")
     if any(p in text for p in bad_phrases): return True
     return False
-
-def _is_failure(res: dict) -> bool:
-    """
-    Robust failure detector. Checks for explicit failure flags first,
-    then checks for common "soft failure" phrases.
-    """
-    if not res: return True
-
-    # 1. Check for an explicit `success: false` flag from the tool.
-    if res.get("success") is False:
-        return True
-
-    # 2. Check for common "soft failure" phrases for cases where the tool
-    #    ran correctly but couldn't find an answer.
-    text = (res.get("answer") or "").strip().lower()
-    bad_phrases = ("i don't know", "unable to", "cannot", "no answer", "failed", "error", "could not generate a valid sql", "returned no results")
-    if any(p in text for p in bad_phrases):
-        return True
-        
-    return False    
 
 def _with_meta(res: dict, original_query: str, primary: str, fallback: bool) -> dict:
     res.setdefault("metadata", {})
@@ -120,24 +107,22 @@ def _with_meta(res: dict, original_query: str, primary: str, fallback: bool) -> 
         res["metadata"]["doctypes_used"] = res["metadata"]["routed_doctypes"]
     return res
 
+# --- Resilient Cache & CLI ---
+
 def _get_history_from_cache(user_id: str) -> List[Dict[str, str]]:
-    """Safely retrieves and decodes chat history from the cache."""
     try:
         cache_key = f"chat_history_{user_id}"
         cached_data = frappe.cache().get(cache_key)
         if isinstance(cached_data, bytes):
             cached_data = cached_data.decode('utf-8')
-        if isinstance(cached_data, str):
+        if isinstance(cached_data, str) and cached_data:
             return json.loads(cached_data)
-        if isinstance(cached_data, list):
-            return cached_data
         return []
     except Exception as e:
         print(f"> [Warning] Failed to retrieve or parse chat history from cache: {e}")
         return []
 
 def _save_history_to_cache(user_id: str, history: List[Dict[str, str]]):
-    """Safely serializes and saves chat history to the cache."""
     try:
         cache_key = f"chat_history_{user_id}"
         history_to_save = history[-10:]
@@ -145,6 +130,7 @@ def _save_history_to_cache(user_id: str, history: List[Dict[str, str]]):
     except Exception as e:
         print(f"\n> [Warning] Failed to save chat history to cache: {e}")
         print("> Conversation memory will not be available for the next turn.")
+
 
 # --- Bench CLI (HAVING RESILIENT HISTORY) ---
 def cli(q: str, user_id: str = "default_user"):
@@ -161,7 +147,7 @@ def cli(q: str, user_id: str = "default_user"):
 
     bench execute tap_lms.services.router.cli --kwargs "{'q':'list all the activities present', 'user_id':'user123'}"
 
-    bench execute tap_lms.services.rag_answerer.cli --kwargs "{'q':'Find a video about financial literacy and goal setting and summarize its key points', 'user_id':'user123'}"
+    bench execute tap_lms.services.router.cli --kwargs "{'q':'Find a video about financial literacy and goal setting and summarize its key points', 'user_id':'user123'}"
     
     '''
     # 1. Get history safely
@@ -169,6 +155,10 @@ def cli(q: str, user_id: str = "default_user"):
     
     # 2. Call the main answer function
     out = answer(q, history=history)
+    # Handle the interim message for the CLI demo to simulate the bot's behavior.
+    if "interim_message" in out:
+        print("\n--- INTERIM MESSAGE (Simulating Bot Message) ---")
+        print(out['interim_message'])    
     
     # 3. Update the history list
     history.append({"role": "user", "content": q})
